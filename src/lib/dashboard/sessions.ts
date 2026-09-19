@@ -3,7 +3,7 @@ import { renderCalendarEvents } from '../../calendar';
 import { openSessionModal } from '../../components/sessionModal';
 import { escapeHTML } from '../../utils';
 
-let currentCalendarDate = new Date();
+const currentCalendarDate = new Date();
 let activeFilter: string = 'all';
 
 export async function renderSessions(isAdmin: boolean) {
