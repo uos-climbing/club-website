@@ -25,8 +25,7 @@ export const authenticateToken = (req: any, res: any, next: any) => {
 export const requireCommittee = async (req: any, res: any, next: any) => {
     // The root account cannot be demoted. Retaining this fast path also keeps
     // authorization available if a transient database failure affects an admin.
-    const isRootAdmin =
-        req.user.role === 'committee' && (req.user.email || '').toLowerCase() === ROOT_ADMIN_EMAIL;
+    const isRootAdmin = req.user.role === 'committee' && (req.user.email || '').toLowerCase() === ROOT_ADMIN_EMAIL;
     if (isRootAdmin) return next();
 
     const tokenClaimsCommittee =

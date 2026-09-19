@@ -205,11 +205,14 @@ describe('Middleware Auth API', () => {
         const login = await request(app)
             .post('/api/auth/login')
             .send({ email: `former-committee-${timestamp}@example.com`, password: 'Password123!' });
-        const committeeToken = login.headers['set-cookie']?.find((cookie: string) => cookie.startsWith('uscc_token='))
+        const committeeToken = login.headers['set-cookie']
+            ?.find((cookie: string) => cookie.startsWith('uscc_token='))
             ?.split(';')[0]
             .split('=')[1];
 
-        expect((await request(app).get('/api/admin/users').set('Authorization', `Bearer ${committeeToken}`)).status).toBe(200);
+        expect(
+            (await request(app).get('/api/admin/users').set('Authorization', `Bearer ${committeeToken}`)).status
+        ).toBe(200);
         await request(app).post(`/api/admin/users/${userId}/demote`).set('Authorization', `Bearer ${rootToken}`);
 
         const res = await request(app).get('/api/admin/users').set('Authorization', `Bearer ${committeeToken}`);
