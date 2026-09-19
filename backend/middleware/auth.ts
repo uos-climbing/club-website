@@ -23,17 +23,21 @@ export const authenticateToken = (req: any, res: any, next: any) => {
 };
 
 export const requireCommittee = async (req: any, res: any, next: any) => {
-    const isCommitteeJWT =
+    // The root account cannot be demoted. Retaining this fast path also keeps
+    // authorization available if a transient database failure affects an admin.
+    const isRootAdmin =
+        req.user.role === 'committee' && (req.user.email || '').toLowerCase() === ROOT_ADMIN_EMAIL;
+    if (isRootAdmin) return next();
+
+    const tokenClaimsCommittee =
         req.user.role === 'committee' ||
         !!req.user.committeeRole ||
         (Array.isArray(req.user.committeeRoles) && req.user.committeeRoles.length > 0);
+    if (!tokenClaimsCommittee) return res.status(403).json({ error: 'Requires committee privileges' });
 
-    if (isCommitteeJWT) return next();
-
-    // Fallbacks for stale tokens: users table first, then committee_roles junction.
-    // DB errors resolve to "not committee" — same behaviour as the callback version,
-    // which treated query failures as denial rather than 500.
-    const user = await dbGet(
+    // Committee status is mutable, so verify that a token's claim remains true.
+    // Any database error denies access rather than silently trusting stale data.
+    const user = await dbGet<{ id: string }>(
         'SELECT id FROM users WHERE id = ? AND (role = "committee" OR committeeRole IS NOT NULL)',
         [req.user.id]
     ).catch(() => undefined);
