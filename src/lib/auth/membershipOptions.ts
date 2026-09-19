@@ -1,12 +1,13 @@
 import type { MembershipType } from '../../auth';
+import { escapeHTML } from '../../utils';
 
 function toMembershipOptionMarkup(typeId: string, label: string, checked: boolean): string {
     return `
             <label class="flex items-start gap-3 cursor-pointer group">
-                <input type="checkbox" name="membershipType" value="${typeId}" ${checked ? 'checked' : ''}
+                <input type="checkbox" name="membershipType" value="${escapeHTML(typeId)}" ${checked ? 'checked' : ''}
                     class="mt-0.5 accent-brand-gold w-4 h-4 shrink-0" />
                 <div>
-                    <span class="text-white text-xs font-bold">${label}</span>
+                    <span class="text-white text-xs font-bold">${escapeHTML(label)}</span>
                     <p class="text-slate-500 text-[10px]">Select this membership type for your account</p>
                 </div>
             </label>
