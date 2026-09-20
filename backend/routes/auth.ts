@@ -233,6 +233,7 @@ router.post('/login', authLimiter, async (req, res) => {
 
     // Don't send hash back
     const { passwordHash, ...userWithoutPassword } = user;
+    void passwordHash;
     const token = jwt.sign(userWithoutPassword, SECRET_KEY, { expiresIn: '24h' });
 
     res.cookie('uscc_token', token, cookieOptions);

@@ -1,12 +1,14 @@
 import { randomUUID } from 'crypto';
-import { db } from '../db';
 
 export const ROOT_ADMIN_EMAIL = (process.env.ROOT_ADMIN_EMAIL || 'committee@sheffieldclimbing.org').toLowerCase();
 
-export function isRootAdmin(user: any): boolean {
+export function isRootAdmin(user: unknown): boolean {
     return (
-        !!user &&
+        typeof user === 'object' &&
+        user !== null &&
+        'role' in user &&
         user.role === 'committee' &&
+        'email' in user &&
         typeof user.email === 'string' &&
         user.email.toLowerCase() === ROOT_ADMIN_EMAIL
     );

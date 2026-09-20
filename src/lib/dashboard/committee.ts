@@ -153,7 +153,7 @@ export async function initCsvExportModal() {
                     typeSelect.appendChild(option);
                 });
             }
-        } catch (err: any) {
+        } catch {
             showToast('Failed to load membership types', 'error');
         }
     }

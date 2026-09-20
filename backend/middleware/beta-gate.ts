@@ -33,7 +33,7 @@ export const betaGate = (req: Request, res: Response, next: NextFunction) => {
     try {
         jwt.verify(token, secret);
         next();
-    } catch (err) {
+    } catch {
         // Token invalid or expired
         res.clearCookie(BETA_ACCESS_COOKIE);
         res.redirect('/beta-gate');

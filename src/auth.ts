@@ -93,7 +93,7 @@ export const authState = {
         try {
             const data = await apiFetch('/api/auth/me');
             this.user = data.user;
-        } catch (e) {
+        } catch {
             this.logout();
         }
     },

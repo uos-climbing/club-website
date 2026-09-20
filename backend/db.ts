@@ -125,7 +125,7 @@ function initializeDatabase() {
             deprecated INTEGER DEFAULT 0
         )`);
 
-        db.run('ALTER TABLE membership_types ADD COLUMN deprecated INTEGER DEFAULT 0', (err) => {});
+        db.run('ALTER TABLE membership_types ADD COLUMN deprecated INTEGER DEFAULT 0', () => {});
 
         // User Memberships Table (many-to-many: one user can hold multiple membership types)
         db.run(`CREATE TABLE IF NOT EXISTS user_memberships (
@@ -157,7 +157,7 @@ function initializeDatabase() {
                 )
             )
         `,
-            (err) => {
+            () => {
                 // Create unique index after deduplication (safe to run even if already exists)
                 db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_memberships_unique
                 ON user_memberships (userId, membershipType, membershipYear)`);
@@ -168,7 +168,7 @@ function initializeDatabase() {
         db.run('ALTER TABLE users ADD COLUMN firstName TEXT', (err) => {
             if (!err) {
                 // If we successfully added firstName, also try adding lastName and migrating data
-                db.run('ALTER TABLE users ADD COLUMN lastName TEXT', (err2) => {
+                db.run('ALTER TABLE users ADD COLUMN lastName TEXT', () => {
                     db.all(
                         'SELECT id, name FROM users WHERE (firstName IS NULL OR firstName = "") AND name IS NOT NULL',
                         [],
@@ -188,14 +188,14 @@ function initializeDatabase() {
                 });
             }
         });
-        db.run('ALTER TABLE users ADD COLUMN lastName TEXT', (err) => {});
-        db.run('ALTER TABLE users ADD COLUMN emergencyContactName TEXT', (err) => {});
-        db.run('ALTER TABLE users ADD COLUMN emergencyContactMobile TEXT', (err) => {});
-        db.run('ALTER TABLE users ADD COLUMN pronouns TEXT', (err) => {});
-        db.run('ALTER TABLE users ADD COLUMN dietaryRequirements TEXT', (err) => {});
-        db.run('ALTER TABLE users ADD COLUMN committeeRole TEXT', (err) => {});
-        db.run('ALTER TABLE users ADD COLUMN membershipYear TEXT', (err) => {});
-        db.run('ALTER TABLE users ADD COLUMN emailVerified INTEGER DEFAULT 0', (err) => {});
+        db.run('ALTER TABLE users ADD COLUMN lastName TEXT', () => {});
+        db.run('ALTER TABLE users ADD COLUMN emergencyContactName TEXT', () => {});
+        db.run('ALTER TABLE users ADD COLUMN emergencyContactMobile TEXT', () => {});
+        db.run('ALTER TABLE users ADD COLUMN pronouns TEXT', () => {});
+        db.run('ALTER TABLE users ADD COLUMN dietaryRequirements TEXT', () => {});
+        db.run('ALTER TABLE users ADD COLUMN committeeRole TEXT', () => {});
+        db.run('ALTER TABLE users ADD COLUMN membershipYear TEXT', () => {});
+        db.run('ALTER TABLE users ADD COLUMN emailVerified INTEGER DEFAULT 0', () => {});
         db.run('ALTER TABLE users ADD COLUMN calendarToken TEXT', (err) => {
             // If the column was just added, populate existing users with tokens
             if (!err) {
@@ -208,10 +208,10 @@ function initializeDatabase() {
                 });
             }
         });
-        db.run('ALTER TABLE users ADD COLUMN instagram TEXT', (err) => {});
-        db.run('ALTER TABLE users ADD COLUMN faveCrag TEXT', (err) => {});
-        db.run('ALTER TABLE users ADD COLUMN bio TEXT', (err) => {});
-        db.run('ALTER TABLE users ADD COLUMN profilePhoto TEXT', (err) => {});
+        db.run('ALTER TABLE users ADD COLUMN instagram TEXT', () => {});
+        db.run('ALTER TABLE users ADD COLUMN faveCrag TEXT', () => {});
+        db.run('ALTER TABLE users ADD COLUMN bio TEXT', () => {});
+        db.run('ALTER TABLE users ADD COLUMN profilePhoto TEXT', () => {});
 
         // Sessions Table
         db.run(`CREATE TABLE IF NOT EXISTS sessions (
@@ -226,10 +226,10 @@ function initializeDatabase() {
             registrationVisibility TEXT DEFAULT 'all'
         )`);
 
-        db.run('ALTER TABLE sessions ADD COLUMN requiredMembership TEXT DEFAULT "basic"', (err) => {});
-        db.run('ALTER TABLE sessions ADD COLUMN visibility TEXT DEFAULT "all"', (err) => {});
-        db.run('ALTER TABLE sessions ADD COLUMN registrationVisibility TEXT DEFAULT "all"', (err) => {});
-        db.run('ALTER TABLE sessions ADD COLUMN location TEXT', (err) => {});
+        db.run('ALTER TABLE sessions ADD COLUMN requiredMembership TEXT DEFAULT "basic"', () => {});
+        db.run('ALTER TABLE sessions ADD COLUMN visibility TEXT DEFAULT "all"', () => {});
+        db.run('ALTER TABLE sessions ADD COLUMN registrationVisibility TEXT DEFAULT "all"', () => {});
+        db.run('ALTER TABLE sessions ADD COLUMN location TEXT', () => {});
 
         // Bookings Table
         // reminderSentAt: epoch ms of last reminder sent (NULL = not yet reminded)
@@ -267,8 +267,8 @@ function initializeDatabase() {
             FOREIGN KEY (userId) REFERENCES users(id)
         )`);
 
-        db.run('ALTER TABLE candidates ADD COLUMN role TEXT', (err) => {});
-        db.run('ALTER TABLE candidates ADD COLUMN presentationLink TEXT', (err) => {});
+        db.run('ALTER TABLE candidates ADD COLUMN role TEXT', () => {});
+        db.run('ALTER TABLE candidates ADD COLUMN presentationLink TEXT', () => {});
 
         // System Config Table (for Elections open/close, etc.)
         db.run(`CREATE TABLE IF NOT EXISTS config (
@@ -377,17 +377,17 @@ function initializeDatabase() {
             galleryLandscapeY REAL DEFAULT 50,
             galleryLandscapeZoom REAL DEFAULT 1
         )`);
-        db.run('ALTER TABLE gallery ADD COLUMN featured INTEGER DEFAULT 0', (err) => {});
-        db.run('ALTER TABLE gallery ADD COLUMN featuredOrder INTEGER', (err) => {});
-        db.run('ALTER TABLE gallery ADD COLUMN heroDesktopX REAL DEFAULT 50', (err) => {});
-        db.run('ALTER TABLE gallery ADD COLUMN heroDesktopY REAL DEFAULT 50', (err) => {});
-        db.run('ALTER TABLE gallery ADD COLUMN heroDesktopZoom REAL DEFAULT 1', (err) => {});
-        db.run('ALTER TABLE gallery ADD COLUMN heroMobileX REAL DEFAULT 50', (err) => {});
-        db.run('ALTER TABLE gallery ADD COLUMN heroMobileY REAL DEFAULT 50', (err) => {});
-        db.run('ALTER TABLE gallery ADD COLUMN heroMobileZoom REAL DEFAULT 1', (err) => {});
-        db.run('ALTER TABLE gallery ADD COLUMN galleryLandscapeX REAL DEFAULT 50', (err) => {});
-        db.run('ALTER TABLE gallery ADD COLUMN galleryLandscapeY REAL DEFAULT 50', (err) => {});
-        db.run('ALTER TABLE gallery ADD COLUMN galleryLandscapeZoom REAL DEFAULT 1', (err) => {});
+        db.run('ALTER TABLE gallery ADD COLUMN featured INTEGER DEFAULT 0', () => {});
+        db.run('ALTER TABLE gallery ADD COLUMN featuredOrder INTEGER', () => {});
+        db.run('ALTER TABLE gallery ADD COLUMN heroDesktopX REAL DEFAULT 50', () => {});
+        db.run('ALTER TABLE gallery ADD COLUMN heroDesktopY REAL DEFAULT 50', () => {});
+        db.run('ALTER TABLE gallery ADD COLUMN heroDesktopZoom REAL DEFAULT 1', () => {});
+        db.run('ALTER TABLE gallery ADD COLUMN heroMobileX REAL DEFAULT 50', () => {});
+        db.run('ALTER TABLE gallery ADD COLUMN heroMobileY REAL DEFAULT 50', () => {});
+        db.run('ALTER TABLE gallery ADD COLUMN heroMobileZoom REAL DEFAULT 1', () => {});
+        db.run('ALTER TABLE gallery ADD COLUMN galleryLandscapeX REAL DEFAULT 50', () => {});
+        db.run('ALTER TABLE gallery ADD COLUMN galleryLandscapeY REAL DEFAULT 50', () => {});
+        db.run('ALTER TABLE gallery ADD COLUMN galleryLandscapeZoom REAL DEFAULT 1', () => {});
 
         // Create root admin if not exists
         db.get('SELECT id, membershipYear FROM users WHERE email = ?', [ROOT_ADMIN_EMAIL], async (err, row: any) => {

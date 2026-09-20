@@ -206,7 +206,7 @@ export async function updateUI() {
                         (cb.closest('label') as HTMLElement | null)?.style.setProperty('opacity', '0.6');
                     }
                 });
-            } catch (e) {
+            } catch {
                 membershipsContainer.innerHTML =
                     '<p class="text-xs text-red-400 text-center uppercase tracking-wider">Failed to load</p>';
             }
