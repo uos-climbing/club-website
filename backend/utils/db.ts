@@ -1,5 +1,11 @@
 import { db } from '../db';
 
+/** SQLite values accepted by the application's parameterized queries. */
+export type SqlValue = string | number | boolean | null | Buffer;
+// Route parameters are progressively narrowed at each endpoint; keep this
+// boundary broad until all Express route params use explicit string types.
+export type SqlParams = unknown[];
+
 /**
  * Promisified SQLite helpers.
  *
@@ -15,14 +21,14 @@ import { db } from '../db';
  */
 
 /** db.get — resolves with the row, or undefined when no row matches; rejects on DB error. */
-export function dbGet<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {
+export function dbGet<T = unknown>(sql: string, params: SqlParams = []): Promise<T | undefined> {
     return new Promise((resolve, reject) => {
         db.get(sql, params, (err: Error | null, row: T) => (err ? reject(err) : resolve(row)));
     });
 }
 
 /** db.all — resolves with all matching rows (empty array if none); rejects on DB error. */
-export function dbAll<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+export function dbAll<T = unknown>(sql: string, params: SqlParams = []): Promise<T[]> {
     return new Promise((resolve, reject) => {
         db.all(sql, params, (err: Error | null, rows: T[]) => (err ? reject(err) : resolve(rows ?? [])));
     });
@@ -37,7 +43,7 @@ export interface RunResult {
  * Use this for INSERT/UPDATE/DELETE where affected-row counts matter
  * (e.g. capacity-guarded booking updates rely on changes === 0).
  */
-export function dbRun(sql: string, params: any[] = []): Promise<RunResult> {
+export function dbRun(sql: string, params: SqlParams = []): Promise<RunResult> {
     return new Promise((resolve, reject) => {
         // Non-arrow function is required here: `this` carries sqlite3's run metadata.
         db.run(sql, params, function (this: RunResult, err: Error | null) {
@@ -88,7 +94,7 @@ export function withTransaction<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /** db.run with the error-callback contract guaranteed (never emits unhandled errors). */
-function txRun(sql: string, params: any[] = []): Promise<RunResult> {
+function txRun(sql: string, params: SqlParams = []): Promise<RunResult> {
     return new Promise((resolve, reject) => {
         db.run(sql, params, function (this: RunResult, err: Error | null) {
             if (err) reject(err);

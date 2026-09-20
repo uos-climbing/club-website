@@ -1,9 +1,10 @@
+import type { Request } from 'express';
 import multer from 'multer';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 
-export const imageFileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+export const imageFileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const filetypes = /jpeg|jpg|png|webp|heic|heif/;
     const mimetype = filetypes.test(file.mimetype);
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());

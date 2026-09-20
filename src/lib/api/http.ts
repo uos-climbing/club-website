@@ -1,33 +1,41 @@
-export async function apiFetch(endpoint: string, options: RequestInit = {}) {
+export class ApiError extends Error {
+    constructor(
+        message: string,
+        readonly status: number,
+        readonly data: unknown
+    ) {
+        super(message);
+        this.name = 'ApiError';
+    }
+}
+
+function getApiErrorMessage(data: unknown, fallback: string): string {
+    if (typeof data === 'object' && data !== null && 'error' in data && typeof data.error === 'string') {
+        return data.error;
+    }
+    return fallback;
+}
+
+export async function apiFetch<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const isFormData = options.body instanceof FormData;
-    const headers: Record<string, string> = {
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        ...((options.headers as Record<string, string>) || {})
-    };
+    const headers = new Headers(options.headers);
+    if (!isFormData && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
     const res = await fetch(endpoint, { ...options, headers, credentials: 'include' });
     const text = await res.text();
-    let data: any = null;
+    let data: unknown = null;
 
     if (text) {
         try {
             data = JSON.parse(text);
         } catch {
-            if (!res.ok) {
-                const err: any = new Error(`API Request Failed (${res.status})`);
-                err.status = res.status;
-                err.data = text;
-                throw err;
-            }
-            return text;
+            if (!res.ok) throw new ApiError(`API Request Failed (${res.status})`, res.status, text);
+            return text as T;
         }
     }
 
     if (!res.ok) {
-        const err: any = new Error(data?.error || `API Request Failed (${res.status})`);
-        err.status = res.status;
-        err.data = data;
-        throw err;
+        throw new ApiError(getApiErrorMessage(data, `API Request Failed (${res.status})`), res.status, data);
     }
-    return data;
+    return data as T;
 }
