@@ -363,11 +363,11 @@ describe('Users API', () => {
             const spy = vi.spyOn(db, 'run').mockImplementation((query, params, cb) => {
                 const callback = typeof params === 'function' ? params : typeof cb === 'function' ? cb : null;
                 if (typeof query === 'string' && query.includes('UPDATE user_memberships SET status = ?')) {
-                    if (callback) (callback as Function).call({}, new Error('DB Error'));
+                    if (callback) (callback as (...args: any[]) => any).call({}, new Error('DB Error'));
                     return db;
                 } else if (typeof query === 'string' && query.includes('INSERT OR IGNORE INTO user_memberships')) {
                     // Simulate duplicate so it goes to UPDATE block
-                    if (callback) (callback as Function).call({ changes: 0 }, null);
+                    if (callback) (callback as (...args: any[]) => any).call({ changes: 0 }, null);
                     return db;
                 }
                 return originalRun(query, params as any, cb as any);
@@ -389,7 +389,7 @@ describe('Users API', () => {
             const spyGet = vi.spyOn(db, 'get').mockImplementation((query, params, cb) => {
                 if (typeof query === 'string' && query.includes('SELECT id FROM user_memberships WHERE userId = ?')) {
                     const callback = typeof params === 'function' ? params : cb;
-                    if (callback) (callback as Function)(null, null);
+                    if (callback) (callback as (...args: any[]) => any)(null, null);
                     return db;
                 }
                 return originalGet(query, params as any, cb as any);
@@ -405,7 +405,7 @@ describe('Users API', () => {
                     actualParams.includes('basic')
                 ) {
                     insertCalled = true;
-                    if (callback) (callback as Function).call({}, null);
+                    if (callback) (callback as (...args: any[]) => any).call({}, null);
                     return db;
                 }
                 return originalRun(query, params as any, cb as any);

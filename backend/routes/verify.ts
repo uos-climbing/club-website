@@ -1,5 +1,14 @@
+import type { Response } from 'express';
 import express from 'express';
 import { db } from '../db';
+
+type VerificationUser = {
+    firstName: string;
+    lastName: string;
+    membershipStatus: string;
+    membershipYear: string | null;
+    profilePhoto: string | null;
+};
 
 const router = express.Router();
 
@@ -16,7 +25,7 @@ router.get('/:token', (req, res) => {
         WHERE calendarToken = ?
     `;
 
-    db.get(tokenQuery, [verificationToken], (err, tokenUser: any) => {
+    db.get(tokenQuery, [verificationToken], (err: Error | null, tokenUser: VerificationUser | undefined) => {
         if (err) return res.status(500).json({ error: 'Database error' });
 
         // Backward compatibility for legacy tests only.
@@ -26,11 +35,15 @@ router.get('/:token', (req, res) => {
                 FROM users
                 WHERE id = ? OR registrationNumber = ?
             `;
-            return db.get(legacyQuery, [verificationToken, verificationToken], (legacyErr, legacyUser: any) => {
-                if (legacyErr) return res.status(500).json({ error: 'Database error' });
-                if (!legacyUser) return res.status(404).json({ error: 'Member not found' });
-                return respondWithUser(legacyUser, res);
-            });
+            return db.get(
+                legacyQuery,
+                [verificationToken, verificationToken],
+                (legacyErr: Error | null, legacyUser: VerificationUser | undefined) => {
+                    if (legacyErr) return res.status(500).json({ error: 'Database error' });
+                    if (!legacyUser) return res.status(404).json({ error: 'Member not found' });
+                    return respondWithUser(legacyUser, res);
+                }
+            );
         }
 
         if (!tokenUser) return res.status(404).json({ error: 'Member not found' });
@@ -38,7 +51,7 @@ router.get('/:token', (req, res) => {
     });
 });
 
-function respondWithUser(user: any, res: any) {
+function respondWithUser(user: VerificationUser, res: Response) {
     // Calculate expiry date (31 Aug of the second year in "2026/27")
     let expiryDate = 'N/A';
     if (user.membershipYear) {

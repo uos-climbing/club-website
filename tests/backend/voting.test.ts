@@ -345,7 +345,7 @@ describe('Voting API', () => {
         const spyRun = vi.spyOn(db, 'run').mockImplementation((query, params, cb) => {
             if (typeof query === 'string' && query.includes('DELETE FROM candidates WHERE userId = ?')) {
                 const callback = typeof params === 'function' ? params : cb;
-                if (callback) (callback as Function).call({}, new Error('DB Error'));
+                if (callback) (callback as (...args: any[]) => any).call({}, new Error('DB Error'));
                 return db;
             }
             return originalRun(query, params as any, cb as any);
@@ -426,7 +426,7 @@ describe('Voting API', () => {
         const spyRun = vi.spyOn(db, 'run').mockImplementation((query, params, cb) => {
             if (typeof query === 'string' && query.includes('INSERT INTO referendum_votes')) {
                 const callback = typeof params === 'function' ? params : cb;
-                if (callback) (callback as Function).call({}, new Error('DB Error'));
+                if (callback) (callback as (...args: any[]) => any).call({}, new Error('DB Error'));
                 return db;
             }
             return originalRun(query, params as any, cb as any);

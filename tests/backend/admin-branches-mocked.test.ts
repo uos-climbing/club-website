@@ -4,16 +4,16 @@ import request from 'supertest';
 
 function createDbMock() {
     const db: any = {
-        get: vi.fn((sql: string, params: any[], cb: Function) => cb(null, null)),
-        all: vi.fn((sql: string, params: any[], cb: Function) => cb(null, [])),
-        run: vi.fn((sql: string, params: any, cb?: Function) => {
+        get: vi.fn((sql: string, params: any[], cb: (...args: any[]) => any) => cb(null, null)),
+        all: vi.fn((sql: string, params: any[], cb: (...args: any[]) => any) => cb(null, [])),
+        run: vi.fn((sql: string, params: any, cb?: (...args: any[]) => any) => {
             const callback = typeof params === 'function' ? params : cb;
             if (callback) callback.call({ changes: 1 }, null);
             return db;
         }),
         prepare: vi.fn(() => ({
             run: vi.fn(),
-            finalize: vi.fn((cb?: Function) => cb && cb(null))
+            finalize: vi.fn((cb?: (...args: any[]) => any) => cb && cb(null))
         }))
     };
     return db;
@@ -25,13 +25,13 @@ async function loadAdminApp(root = true) {
     vi.doMock('../../backend/db', () => ({ db }));
     vi.doMock('../../backend/services/email', () => ({ sendEmail: vi.fn().mockResolvedValue(true) }));
     vi.doMock('../../backend/middleware/auth', () => ({
-        authenticateToken: (req: any, _res: any, next: Function) => {
+        authenticateToken: (req: any, _res: any, next: (...args: any[]) => any) => {
             req.user = root
                 ? { id: 'u1', role: 'committee', email: 'committee@sheffieldclimbing.org' }
                 : { id: 'u2', role: 'committee', email: 'member@example.com' };
             next();
         },
-        requireCommittee: (_req: any, _res: any, next: Function) => next()
+        requireCommittee: (_req: any, _res: any, next: (...args: any[]) => any) => next()
     }));
     const { default: adminRouter } = await import('../../backend/routes/admin');
     const app = express();
@@ -48,8 +48,8 @@ describe('Admin Mocked Branches', () => {
     it('users route returns 500 when memberships fetch fails', async () => {
         const { app, db } = await loadAdminApp();
         db.all
-            .mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, [{ id: 'u1' }]))
-            .mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(new Error('DB Error'), null));
+            .mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, [{ id: 'u1' }]))
+            .mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(new Error('DB Error'), null));
         const res = await request(app).get('/api/admin/users');
         expect(res.status).toBe(500);
         expect(res.body.error).toBe('Database error');
@@ -58,9 +58,9 @@ describe('Admin Mocked Branches', () => {
     it('users route returns 500 when committee roles fetch fails', async () => {
         const { app, db } = await loadAdminApp();
         db.all
-            .mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, [{ id: 'u1' }]))
-            .mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, []))
-            .mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(new Error('DB Error'), null));
+            .mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, [{ id: 'u1' }]))
+            .mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, []))
+            .mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(new Error('DB Error'), null));
         const res = await request(app).get('/api/admin/users');
         expect(res.status).toBe(500);
         expect(res.body.error).toBe('Database error');
@@ -68,7 +68,7 @@ describe('Admin Mocked Branches', () => {
 
     it('committee-role assignment returns 500 for available role lookup failure', async () => {
         const { app, db } = await loadAdminApp();
-        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(new Error('DB Error'), null));
+        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(new Error('DB Error'), null));
         const res = await request(app)
             .post('/api/admin/users/u1/committee-role')
             .send({ committeeRoles: ['Chair'] });
@@ -78,9 +78,9 @@ describe('Admin Mocked Branches', () => {
 
     it('committee-role assignment returns 500 when role delete fails', async () => {
         const { app, db } = await loadAdminApp();
-        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, [{ id: 'Chair' }]));
+        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, [{ id: 'Chair' }]));
         const originalRun = db.run.getMockImplementation();
-        db.run.mockImplementation((sql: string, params: any, cb?: Function) => {
+        db.run.mockImplementation((sql: string, params: any, cb?: (...args: any[]) => any) => {
             const callback = typeof params === 'function' ? params : cb;
             if (typeof sql === 'string' && sql.includes('DELETE FROM committee_roles')) {
                 if (callback) callback.call({ changes: 0 }, new Error('DB Error'));
@@ -99,8 +99,8 @@ describe('Admin Mocked Branches', () => {
 
     it('committee-role assignment returns 500 when role insert fails', async () => {
         const { app, db } = await loadAdminApp();
-        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, [{ id: 'Chair' }]));
-        db.run.mockImplementation((sql: string, params: any, cb?: Function) => {
+        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, [{ id: 'Chair' }]));
+        db.run.mockImplementation((sql: string, params: any, cb?: (...args: any[]) => any) => {
             if (sql.includes('INSERT OR IGNORE INTO committee_roles')) {
                 throw new Error('DB Error'); // rejected by the promise wrapper -> route returns 500
             }
@@ -135,7 +135,7 @@ describe('Admin Mocked Branches', () => {
 
     it('committee role delete returns 500 on count-query error', async () => {
         const { app, db } = await loadAdminApp();
-        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(new Error('DB Error'), null));
+        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(new Error('DB Error'), null));
         const res = await request(app).delete('/api/admin/committee-roles/r1');
         expect(res.status).toBe(500);
         expect(res.body.error).toBe('Database error');
@@ -143,7 +143,7 @@ describe('Admin Mocked Branches', () => {
 
     it('committee role delete returns 500 on delete query error', async () => {
         const { app, db } = await loadAdminApp();
-        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, { count: 0 }));
+        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, { count: 0 }));
         db.run.mockImplementationOnce((_sql: string, _params: any[], cb: any) => {
             cb.call({ changes: 0 }, new Error('DB Error'));
             return db;
@@ -163,15 +163,15 @@ describe('Admin Mocked Branches', () => {
     it('membership approve/reject/delete for non-basic rows succeed without top-level status update', async () => {
         const { app, db } = await loadAdminApp();
         db.get
-            .mockImplementationOnce((_sql: string, _params: any[], cb: Function) =>
+            .mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) =>
                 cb(null, { id: 'm1', userId: 'u1', membershipType: 'comp_team', membershipYear: '2025/2026' })
             )
-            .mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, null))
-            .mockImplementationOnce((_sql: string, _params: any[], cb: Function) =>
+            .mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, null))
+            .mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) =>
                 cb(null, { id: 'm2', userId: 'u1', membershipType: 'comp_team', membershipYear: '2025/2026' })
             )
-            .mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, null))
-            .mockImplementationOnce((_sql: string, _params: any[], cb: Function) =>
+            .mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, null))
+            .mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) =>
                 cb(null, { id: 'm3', userId: 'u1', membershipType: 'comp_team', membershipYear: '2025/2026' })
             );
 

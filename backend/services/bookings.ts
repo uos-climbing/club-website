@@ -3,6 +3,17 @@ import { sendEmail } from './email';
 
 const BASE_URL = (process.env.APP_URL || '').trim().replace(/\/+$/, '') || 'http://localhost:5173';
 
+type ReminderRow = {
+    sid: string;
+    uid: string;
+    email: string;
+    firstName: string | null;
+    title: string;
+    type: string;
+    date: string;
+    location: string | null;
+};
+
 function formatSessionDate(isoDate: string): string {
     const d = new Date(isoDate);
     if (Number.isNaN(d.getTime())) return isoDate;
@@ -55,9 +66,9 @@ export async function sendCancellationConfirmation(
 export async function processBookingReminders(windowHours = 24, now = Date.now()): Promise<number> {
     const horizon = now + windowHours * 3600 * 1000;
 
-    let rows: any[];
+    let rows: ReminderRow[];
     try {
-        rows = await dbAll<any[]>(
+        rows = await dbAll<ReminderRow>(
             `SELECT b.sessionId AS sid, b.userId AS uid,
                     u.email, u.firstName,
                     s.title, s.type, s.date, s.location

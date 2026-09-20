@@ -5,9 +5,9 @@ import bcrypt from 'bcrypt';
 
 function createDbMock() {
     const db: any = {
-        all: vi.fn((sql: string, params: any[], cb: Function) => cb(null, [])),
-        get: vi.fn((sql: string, params: any[], cb: Function) => cb(null, null)),
-        run: vi.fn((sql: string, params: any, cb?: Function) => {
+        all: vi.fn((sql: string, params: any[], cb: (...args: any[]) => any) => cb(null, [])),
+        get: vi.fn((sql: string, params: any[], cb: (...args: any[]) => any) => cb(null, null)),
+        run: vi.fn((sql: string, params: any, cb?: (...args: any[]) => any) => {
             const callback = typeof params === 'function' ? params : cb;
             if (callback) callback.call({ changes: 1 }, null);
             return db;
@@ -33,7 +33,7 @@ async function loadAuthApp(nodeEnv: string) {
     vi.doMock('../../backend/db', () => ({ db }));
     vi.doMock('../../backend/services/email', () => ({ sendEmail }));
     vi.doMock('../../backend/middleware/auth', () => ({
-        authenticateToken: (req: any, _res: any, next: Function) => {
+        authenticateToken: (req: any, _res: any, next: (...args: any[]) => any) => {
             req.user = { id: 'u1' };
             next();
         }
@@ -54,8 +54,8 @@ describe('Auth Router Branches', () => {
 
     it('register rejects non-@sheffield.ac.uk email outside test env', async () => {
         const { app, db } = await loadAuthApp('production');
-        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, [{ id: 'basic' }]));
-        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, null));
+        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, [{ id: 'basic' }]));
+        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, null));
 
         const res = await request(app).post('/api/auth/register').send({
             firstName: 'Prod',
@@ -72,7 +72,7 @@ describe('Auth Router Branches', () => {
 
     it('register returns 500 when no membership types are configured', async () => {
         const { app, db } = await loadAuthApp('production');
-        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, []));
+        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, []));
 
         const res = await request(app).post('/api/auth/register').send({
             firstName: 'Prod',
@@ -90,7 +90,7 @@ describe('Auth Router Branches', () => {
     it('login blocks unverified user outside test env', async () => {
         const { app, db } = await loadAuthApp('production');
         const passwordHash = await bcrypt.hash('Password123!', 4);
-        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: Function) =>
+        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) =>
             cb(null, {
                 id: 'u1',
                 email: 'person@sheffield.ac.uk',
@@ -110,7 +110,7 @@ describe('Auth Router Branches', () => {
 
     it('request-verification rejects already verified users', async () => {
         const { app, db } = await loadAuthApp('production');
-        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: Function) =>
+        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) =>
             cb(null, {
                 id: 'u1',
                 email: 'person@sheffield.ac.uk',
@@ -125,7 +125,7 @@ describe('Auth Router Branches', () => {
 
     it('forgot-password still returns 200 when APP_URL is missing in production', async () => {
         const { app, db, sendEmail } = await loadAuthApp('production');
-        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: Function) =>
+        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) =>
             cb(null, {
                 id: 'u1',
                 firstName: 'Reset',
@@ -145,8 +145,8 @@ describe('Auth Router Branches', () => {
 
     it('register returns pendingVerification in non-test env for valid sheffield emails', async () => {
         const { app, db, sendEmail } = await loadAuthApp('production');
-        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, [{ id: 'basic' }]));
-        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, null));
+        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, [{ id: 'basic' }]));
+        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, null));
 
         const res = await request(app).post('/api/auth/register').send({
             firstName: 'Prod',
@@ -165,10 +165,10 @@ describe('Auth Router Branches', () => {
 
     it('register returns 500 if OTP creation fails after user insert', async () => {
         const { app, db } = await loadAuthApp('production');
-        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, [{ id: 'basic' }]));
-        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: Function) => cb(null, null));
+        db.all.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, [{ id: 'basic' }]));
+        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) => cb(null, null));
         const originalRun = db.run.getMockImplementation();
-        db.run.mockImplementation((sql: string, params: any, cb?: Function) => {
+        db.run.mockImplementation((sql: string, params: any, cb?: (...args: any[]) => any) => {
             const callback = typeof params === 'function' ? params : cb;
             if (typeof sql === 'string' && sql.includes('INSERT OR REPLACE INTO email_verifications')) {
                 if (callback) callback.call({ changes: 0 }, new Error('DB Error'));
@@ -194,7 +194,7 @@ describe('Auth Router Branches', () => {
 
     it('reset-password rejects expired tokens and deletes them', async () => {
         const { app, db } = await loadAuthApp('production');
-        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: Function) =>
+        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) =>
             cb(null, {
                 token: 'tok',
                 userId: 'u1',
@@ -220,7 +220,7 @@ describe('Auth Router Branches', () => {
 
     it('reset-password returns 500 when password hashing throws', async () => {
         const { app, db } = await loadAuthApp('production');
-        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: Function) =>
+        db.get.mockImplementationOnce((_sql: string, _params: any[], cb: (...args: any[]) => any) =>
             cb(null, {
                 token: 'tok2',
                 userId: 'u1',
