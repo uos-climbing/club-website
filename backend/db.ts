@@ -1,4 +1,5 @@
 import sqlite3 from 'sqlite3';
+import type { RunResult } from 'sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import bcrypt from 'bcrypt';
@@ -8,6 +9,12 @@ import { DEV_ROOT_PASSWORD } from './config';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ROOT_ADMIN_EMAIL = (process.env.ROOT_ADMIN_EMAIL || 'committee@sheffieldclimbing.org').toLowerCase();
+
+type UserNameRow = { id: string; name: string | null };
+type UserIdRow = { id: string };
+type RootUserRow = { id: string; membershipYear: string | null };
+type CountRow = { count: number };
+type ConfigRow = { value: string };
 
 // DB_PATH overrides the location everywhere except the test suite (which always
 // uses :memory:) — enables prod-mode smoke tests outside containers.
@@ -172,10 +179,10 @@ function initializeDatabase() {
                     db.all(
                         'SELECT id, name FROM users WHERE (firstName IS NULL OR firstName = "") AND name IS NOT NULL',
                         [],
-                        (err3, rows) => {
-                            if (!err3 && rows && rows.length > 0) {
+                        (err3: Error | null, rows: UserNameRow[]) => {
+                            if (!err3 && rows.length > 0) {
                                 const stmt = db.prepare('UPDATE users SET firstName = ?, lastName = ? WHERE id = ?');
-                                rows.forEach((row: any) => {
+                                rows.forEach((row) => {
                                     const parts = (row.name || '').trim().split(' ');
                                     const f = parts[0] || '';
                                     const l = parts.slice(1).join(' ') || '';
@@ -199,10 +206,10 @@ function initializeDatabase() {
         db.run('ALTER TABLE users ADD COLUMN calendarToken TEXT', (err) => {
             // If the column was just added, populate existing users with tokens
             if (!err) {
-                db.all('SELECT id FROM users WHERE calendarToken IS NULL', [], (err, rows) => {
+                db.all<UserIdRow>('SELECT id FROM users WHERE calendarToken IS NULL', [], (err, rows) => {
                     if (!err && rows) {
                         const stmt = db.prepare('UPDATE users SET calendarToken = ? WHERE id = ?');
-                        rows.forEach((row: any) => stmt.run([crypto.randomUUID(), row.id]));
+                        rows.forEach((row) => stmt.run([crypto.randomUUID(), row.id]));
                         stmt.finalize();
                     }
                 });
@@ -390,8 +397,11 @@ function initializeDatabase() {
         db.run('ALTER TABLE gallery ADD COLUMN galleryLandscapeZoom REAL DEFAULT 1', () => {});
 
         // Create root admin if not exists
-        db.get('SELECT id, membershipYear FROM users WHERE email = ?', [ROOT_ADMIN_EMAIL], async (err, row: any) => {
-            if (!row) {
+        db.get<RootUserRow>(
+            'SELECT id, membershipYear FROM users WHERE email = ?',
+            [ROOT_ADMIN_EMAIL],
+            async (_err, row) => {
+                if (!row) {
                 // First boot for this database.
                 // Production/beta must never start with a publicly-known credential, so generate a
                 // one-off random password and print it exactly once (visible in container logs).
@@ -454,7 +464,7 @@ function initializeDatabase() {
                 db.run(
                     'UPDATE user_memberships SET status = ? WHERE userId = ? AND membershipType = ?',
                     ['active', 'user_root', 'basic'],
-                    function (this: any) {
+                    function (this: RunResult) {
                         // If no rows were updated, insert a fresh active row
                         if (this.changes === 0) {
                             const currentYear = new Date().getFullYear();
@@ -470,8 +480,9 @@ function initializeDatabase() {
                         }
                     }
                 );
+                }
             }
-        });
+        );
 
         // Available Committee Roles Table
         db.run(`CREATE TABLE IF NOT EXISTS available_roles (
@@ -480,7 +491,7 @@ function initializeDatabase() {
         )`);
 
         // Seed default available roles if table is empty
-        db.get('SELECT COUNT(*) as count FROM available_roles', (err, row: any) => {
+        db.get<CountRow>('SELECT COUNT(*) as count FROM available_roles', (err, row) => {
             if (row && row.count === 0) {
                 console.log('Seeding default available roles...');
                 const defaultRoles = [
@@ -503,7 +514,7 @@ function initializeDatabase() {
         });
 
         // Seed default config
-        db.get('SELECT value FROM config WHERE key = ?', ['electionsOpen'], (err, row) => {
+        db.get<ConfigRow>('SELECT value FROM config WHERE key = ?', ['electionsOpen'], (err, row) => {
             if (!row) {
                 db.run('INSERT INTO config (key, value) VALUES (?, ?)', ['electionsOpen', 'false']);
             }
@@ -516,7 +527,7 @@ function initializeDatabase() {
         )`);
 
         // Seed default session types if table is empty
-        db.get('SELECT COUNT(*) as count FROM session_types', (err, row: any) => {
+        db.get<CountRow>('SELECT COUNT(*) as count FROM session_types', (err, row) => {
             if (row && row.count === 0) {
                 console.log('Seeding default session types...');
                 const defaultTypes = [
@@ -533,7 +544,7 @@ function initializeDatabase() {
         });
 
         // Seed default membership types if table is empty
-        db.get('SELECT COUNT(*) as count FROM membership_types', (err, row: any) => {
+        db.get<CountRow>('SELECT COUNT(*) as count FROM membership_types', (err, row) => {
             if (row && row.count === 0) {
                 console.log('Seeding default membership types...');
                 const defaultMembershipTypes = [
@@ -548,7 +559,7 @@ function initializeDatabase() {
         });
 
         // Seed default sessions if table is empty
-        db.get('SELECT COUNT(*) as count FROM sessions', (err, row: any) => {
+        db.get<CountRow>('SELECT COUNT(*) as count FROM sessions', (err, row) => {
             if (row && row.count === 0) {
                 console.log('Seeding default sessions...');
                 const currentYear = new Date().getFullYear();
@@ -621,7 +632,7 @@ function initializeDatabase() {
         });
 
         // Seed default gear if table is empty
-        db.get('SELECT COUNT(*) as count FROM gear', (err, row: any) => {
+        db.get<CountRow>('SELECT COUNT(*) as count FROM gear', (err, row) => {
             if (row && row.count === 0) {
                 console.log('Seeding default gear...');
                 const defaultGear = [

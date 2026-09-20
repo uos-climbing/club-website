@@ -1,27 +1,28 @@
 export class ApiError extends Error {
+    readonly status: number;
+    readonly data: unknown;
     readonly pendingVerification: boolean;
     readonly userId: string | undefined;
 
-    constructor(
-        message: string,
-        readonly status: number,
-        readonly data: unknown
-    ) {
+    constructor(message: string, status: number, data: unknown) {
         super(message);
         this.name = 'ApiError';
+        this.status = status;
+        this.data = data;
         this.pendingVerification = hasBooleanProperty(data, 'pendingVerification');
         this.userId = getStringProperty(data, 'userId');
     }
 }
 
 function hasBooleanProperty(value: unknown, property: string): boolean {
-    return typeof value === 'object' && value !== null && property in value && value[property] === true;
+    if (typeof value !== 'object' || value === null || !(property in value)) return false;
+    return (value as Record<string, unknown>)[property] === true;
 }
 
 function getStringProperty(value: unknown, property: string): string | undefined {
-    return typeof value === 'object' && value !== null && property in value && typeof value[property] === 'string'
-        ? value[property]
-        : undefined;
+    if (typeof value !== 'object' || value === null || !(property in value)) return undefined;
+    const propertyValue = (value as Record<string, unknown>)[property];
+    return typeof propertyValue === 'string' ? propertyValue : undefined;
 }
 
 export function getErrorMessage(error: unknown, fallback: string): string {
@@ -35,7 +36,10 @@ function getApiErrorMessage(data: unknown, fallback: string): string {
     return fallback;
 }
 
-export async function apiFetch<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
+// Untyped legacy callers retain their current behavior while feature modules
+// incrementally supply a response type through apiFetch<T>().
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const isFormData = options.body instanceof FormData;
     const headers = new Headers(options.headers);
     if (!isFormData && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
