@@ -174,7 +174,7 @@ export async function renderAdminLists() {
         const totalActive = filteredActive.length;
 
         // Optional: Render search input
-        let searchHtml = `
+        const searchHtml = `
             <div class="px-5 py-3 border-b border-white/10 bg-slate-900/30">
                 <input type="text" id="roster-search-input" value="${escapeHTML(currentSearchQuery)}" placeholder="Search members by name, email, or reg no..." class="w-full bg-slate-800 text-sm text-white border border-slate-700 rounded-lg px-3 py-2 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none">
             </div>

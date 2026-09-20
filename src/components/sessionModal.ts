@@ -387,7 +387,9 @@ export function openSessionModal(options: SessionModalOptions) {
 
             const typeSelect = document.getElementById('usm-edit-type') as HTMLSelectElement;
             adminApi.getSessionTypes().then((types) => {
-                typeSelect.innerHTML = types.map((t) => `<option value="${t.id}">${t.label}</option>`).join('');
+                typeSelect.innerHTML = types
+                    .map((t) => `<option value="${escapeHTML(t.id)}">${escapeHTML(t.label)}</option>`)
+                    .join('');
                 typeSelect.value = session.type;
             });
 
@@ -399,7 +401,9 @@ export function openSessionModal(options: SessionModalOptions) {
                 .then((types) => {
                     const activeTypes = types.filter((t) => !t.deprecated || t.id === 'basic');
                     const membershipOptions = activeTypes.length
-                        ? activeTypes.map((t) => `<option value="${t.id}">${t.label} Members</option>`).join('')
+                        ? activeTypes
+                              .map((t) => `<option value="${escapeHTML(t.id)}">${escapeHTML(t.label)} Members</option>`)
+                              .join('')
                         : '<option value="basic">Basic Members</option>';
                     registrationRuleSelect.innerHTML = `
                     ${membershipOptions}

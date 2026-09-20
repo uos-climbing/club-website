@@ -11,7 +11,7 @@ import { dbAll, dbRun } from '../../backend/utils/db';
  */
 describe('Booking reminder sweep', () => {
     let rootToken = '';
-    let userToken = '';
+    const userToken = '';
 
     const seedSession = async (id: string, isoDate: string) => {
         await dbRun('INSERT INTO sessions (id, type, title, date, capacity, bookedSlots) VALUES (?, ?, ?, ?, ?, ?)', [

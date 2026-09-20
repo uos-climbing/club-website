@@ -24,7 +24,7 @@ export async function initJoinApp() {
     const prevMonthBtn = document.getElementById('prev-month-btn');
     const nextMonthBtn = document.getElementById('next-month-btn');
 
-    let currentCalendarDate = new Date();
+    const currentCalendarDate = new Date();
     currentCalendarDate.setDate(1); // Default to start of month
 
     async function renderSessions() {

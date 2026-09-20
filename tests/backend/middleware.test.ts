@@ -186,6 +186,68 @@ describe('Middleware Auth API', () => {
         expect(res.status).toBe(200);
     });
 
+    it('allows a member JWT after the user is promoted', async () => {
+        const timestamp = Date.now();
+        const registration = await request(app)
+            .post('/api/auth/register')
+            .send({
+                firstName: 'New',
+                lastName: 'Committee',
+                email: `new-committee-${timestamp}@example.com`,
+                password: 'Password123!',
+                passwordConfirm: 'Password123!',
+                registrationNumber: `NC${timestamp}`
+            });
+        const userId = registration.body.user.id;
+        const memberToken = registration.headers['set-cookie']
+            ?.find((cookie: string) => cookie.startsWith('uscc_token='))
+            ?.split(';')[0]
+            .split('=')[1];
+        const rootToken = await getAdminToken();
+
+        expect((await request(app).get('/api/admin/users').set('Authorization', `Bearer ${memberToken}`)).status).toBe(
+            403
+        );
+        await request(app).post(`/api/admin/users/${userId}/promote`).set('Authorization', `Bearer ${rootToken}`);
+
+        expect((await request(app).get('/api/admin/users').set('Authorization', `Bearer ${memberToken}`)).status).toBe(
+            200
+        );
+    });
+
+    it('rejects a committee JWT after the user is demoted', async () => {
+        const timestamp = Date.now();
+        const registration = await request(app)
+            .post('/api/auth/register')
+            .send({
+                firstName: 'Former',
+                lastName: 'Committee',
+                email: `former-committee-${timestamp}@example.com`,
+                password: 'Password123!',
+                passwordConfirm: 'Password123!',
+                registrationNumber: `FC${timestamp}`
+            });
+        const userId = registration.body.user.id;
+        const rootToken = await getAdminToken();
+
+        await request(app).post(`/api/admin/users/${userId}/promote`).set('Authorization', `Bearer ${rootToken}`);
+        const login = await request(app)
+            .post('/api/auth/login')
+            .send({ email: `former-committee-${timestamp}@example.com`, password: 'Password123!' });
+        const committeeToken = login.headers['set-cookie']
+            ?.find((cookie: string) => cookie.startsWith('uscc_token='))
+            ?.split(';')[0]
+            .split('=')[1];
+
+        expect(
+            (await request(app).get('/api/admin/users').set('Authorization', `Bearer ${committeeToken}`)).status
+        ).toBe(200);
+        await request(app).post(`/api/admin/users/${userId}/demote`).set('Authorization', `Bearer ${rootToken}`);
+
+        const res = await request(app).get('/api/admin/users').set('Authorization', `Bearer ${committeeToken}`);
+        expect(res.status).toBe(403);
+    });
+
     it('blocks regular committee members from creating gear', async () => {
         const comToken = await createRoleUser('committee');
         const res = await request(app)

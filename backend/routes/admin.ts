@@ -272,6 +272,10 @@ router.post('/users/:id/reject', authenticateToken, requireCommittee, async (req
 });
 
 router.post('/users/:id/promote', authenticateToken, requireCommittee, async (req: any, res) => {
+    if (!isRootAdmin(req.user)) {
+        return res.status(403).json({ error: 'Only Root Admin can perform this action' });
+    }
+
     await dbRun('UPDATE users SET role = ? WHERE id = ?', ['committee', req.params.id]).then(
         () => {
             void logAudit(req.user, 'member.promote', 'user', req.params.id);

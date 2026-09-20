@@ -155,6 +155,27 @@ describe('Admin API', () => {
         expect(res.body).toHaveProperty('success', true);
     });
 
+    it('should prevent non-root committee users from promoting members', async () => {
+        const { id: committeeId } = await createTargetUser('non_root_promoter');
+        await request(app).post(`/api/admin/users/${committeeId}/promote`).set('Authorization', `Bearer ${rootToken}`);
+        const committeeLogin = await request(app).post('/api/auth/login').send({
+            email: 'non_root_promoter_target@example.com',
+            password: 'Password123!'
+        });
+        const committeeToken = committeeLogin.headers['set-cookie']
+            ?.find((cookie: string) => cookie.startsWith('uscc_token='))
+            ?.split(';')[0]
+            .split('=')[1];
+        const { id: targetId } = await createTargetUser('promotion_target');
+
+        const res = await request(app)
+            .post(`/api/admin/users/${targetId}/promote`)
+            .set('Authorization', `Bearer ${committeeToken}`);
+
+        expect(res.status).toBe(403);
+        expect(res.body).toHaveProperty('error', 'Only Root Admin can perform this action');
+    });
+
     it('should prevent non-root admin from demoting', async () => {
         const { id } = await createTargetUser('non_root_demote');
         // userToken was created in beforeAll
