@@ -90,10 +90,21 @@ export const adminApi = {
         });
     },
 
-    async addSessions(sessions: Omit<Session, 'id' | 'bookedSlots'>[]): Promise<Session[]> {
+    async addSessions(
+        sessions: Omit<Session, 'id' | 'bookedSlots'>[],
+        recurrenceRule?: 'weekly' | 'biweekly',
+        recurrenceUntil?: string
+    ): Promise<{
+        seriesId: string | null;
+        sessions: Session[];
+    }> {
         return apiFetch('/api/sessions/bulk', {
             method: 'POST',
-            body: JSON.stringify({ sessions })
+            body: JSON.stringify({
+                sessions,
+                recurrenceRule: recurrenceRule || 'none',
+                recurrenceUntil: recurrenceUntil || null
+            })
         });
     },
 
@@ -101,6 +112,34 @@ export const adminApi = {
         return apiFetch(`/api/sessions/${id}`, {
             method: 'PUT',
             body: JSON.stringify(updates)
+        });
+    },
+
+    async getSessionSeries(id: string): Promise<{
+        series: {
+            id: string;
+            recurrenceRule: string;
+            recurrenceUntil: string;
+            createdAt: number;
+        };
+        sessions: Session[];
+    }> {
+        return apiFetch(`/api/sessions/${id}/series`);
+    },
+
+    async updateSessionSeries(
+        id: string,
+        updates: Partial<Session>
+    ): Promise<void> {
+        return apiFetch(`/api/sessions/${id}/series`, {
+            method: 'PUT',
+            body: JSON.stringify(updates)
+        });
+    },
+
+    async deleteSessionSeries(id: string): Promise<void> {
+        return apiFetch(`/api/sessions/${id}/series`, {
+            method: 'DELETE'
         });
     },
 

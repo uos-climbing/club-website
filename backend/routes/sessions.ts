@@ -182,27 +182,28 @@ router.post('/', authenticateToken, requireCommittee, async (req, res) => {
  * Rollback on any failure, so either all sessions are created or none.
  */
 router.post('/bulk', authenticateToken, requireCommittee, async (req, res) => {
-    const { sessions } = req.body;
+    const {
+        sessions,
+        recurrenceRule,
+        recurrenceUntil
+    } = req.body;
 
-    if (!Array.isArray(sessions) || sessions.length === 0 || sessions.length > 50) {
-        return res.status(400).json({ error: 'Provide between 1 and 50 sessions.' });
+    if (!Array.isArray(sessions) || sessions.length === 0) {
+        return res.status(400).json({ error: 'At least one session is required' });
     }
 
-    for (const session of sessions) {
-        if (
-            !session ||
-            typeof session.title !== 'string' ||
-            !session.title.trim() ||
-            typeof session.type !== 'string' ||
-            !session.type.trim() ||
-            typeof session.date !== 'string' ||
-            !session.date.trim() ||
-            typeof session.capacity !== 'number' ||
-            !Number.isInteger(session.capacity) ||
-            session.capacity < 1
-        ) {
-            return res.status(400).json({ error: 'Invalid session data.' });
-        }
+    if (sessions.length > 50) {
+        return res.status(400).json({ error: 'A maximum of 50 sessions can be created at once' });
+    }
+
+    const isRecurring = recurrenceRule && recurrenceRule !== 'none';
+
+    if (isRecurring && !recurrenceUntil) {
+        return res.status(400).json({ error: 'recurrenceUntil is required for recurring sessions' });
+    }
+
+    if (isRecurring && !['weekly', 'biweekly'].includes(recurrenceRule)) {
+        return res.status(400).json({ error: 'Invalid recurrence rule' });
     }
 
     try {
@@ -211,64 +212,316 @@ router.post('/bulk', authenticateToken, requireCommittee, async (req, res) => {
             return res.status(500).json({ error: 'No membership types configured' });
         }
 
-        const preparedSessions: Array<{
-            id: string;
-            type: string;
-            title: string;
-            date: string;
-            capacity: number;
-            bookedSlots: number;
-            location: string | null;
-            requiredMembership: string;
-            visibility: 'committee_only' | 'all';
-            registrationVisibility: 'committee_only' | 'all';
-        }> = [];
+        const firstSession = sessions[0];
+        const reqMemb = firstSession.requiredMembership || defaultMembershipType;
 
-        for (const session of sessions) {
-            const reqMemb = session.requiredMembership || defaultMembershipType;
-
-            if (!(await membershipTypeExists(reqMemb))) {
-                return res.status(400).json({ error: 'Invalid required membership type' });
-            }
-
-            preparedSessions.push({
-                id: 'sess_' + crypto.randomUUID(),
-                type: session.type,
-                title: session.title,
-                date: session.date,
-                capacity: session.capacity,
-                bookedSlots: 0,
-                location: session.location || null,
-                requiredMembership: reqMemb,
-                visibility: session.visibility === 'committee_only' ? 'committee_only' : 'all',
-                registrationVisibility:
-                    session.registrationVisibility === 'committee_only' ? 'committee_only' : 'all'
-            });
+        if (!(await membershipTypeExists(reqMemb))) {
+            return res.status(400).json({ error: 'Invalid required membership type' });
         }
 
+        const eventVisibility =
+            firstSession.visibility === 'committee_only' ? 'committee_only' : 'all';
+
+        const eventRegistrationVisibility =
+            firstSession.registrationVisibility === 'committee_only'
+                ? 'committee_only'
+                : 'all';
+
+        const seriesId = isRecurring
+            ? 'series_' + crypto.randomUUID()
+            : null;
+
         const createdSessions = await inTransaction(async () => {
-            for (const session of preparedSessions) {
+            if (seriesId) {
                 await dbRun(
-                    'INSERT INTO sessions (id, type, title, date, capacity, bookedSlots, location, requiredMembership, visibility, registrationVisibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    `INSERT INTO session_series (
+                        id,
+                        recurrenceRule,
+                        recurrenceUntil,
+                        createdAt
+                    ) VALUES (?, ?, ?, ?)`,
                     [
-                        session.id,
-                        session.type,
-                        session.title,
-                        session.date,
-                        session.capacity,
-                        session.bookedSlots,
-                        session.location,
-                        session.requiredMembership,
-                        session.visibility,
-                        session.registrationVisibility
+                        seriesId,
+                        recurrenceRule,
+                        recurrenceUntil,
+                        Date.now()
                     ]
                 );
             }
 
-            return preparedSessions;
+            const created = [];
+
+            for (const session of sessions) {
+                const id = 'sess_' + crypto.randomUUID();
+
+                await dbRun(
+                    `INSERT INTO sessions (
+                        id,
+                        type,
+                        title,
+                        date,
+                        capacity,
+                        bookedSlots,
+                        location,
+                        requiredMembership,
+                        visibility,
+                        registrationVisibility,
+                        seriesId
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        id,
+                        session.type,
+                        session.title,
+                        session.date,
+                        session.capacity,
+                        0,
+                        session.location || null,
+                        reqMemb,
+                        eventVisibility,
+                        eventRegistrationVisibility,
+                        seriesId
+                    ]
+                );
+
+                created.push({
+                    id,
+                    type: session.type,
+                    title: session.title,
+                    date: session.date,
+                    capacity: session.capacity,
+                    bookedSlots: 0,
+                    location: session.location || undefined,
+                    requiredMembership: reqMemb,
+                    visibility: eventVisibility,
+                    registrationVisibility: eventRegistrationVisibility,
+                    seriesId
+                });
+            }
+
+            return created;
         });
 
-        res.json(createdSessions);
+        res.json({
+            seriesId,
+            sessions: createdSessions
+        });
+    } catch (error) {
+        console.error('Error creating session series:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+router.get('/me/bookings', authenticateToken, async (req: any, res) => {
+    try {
+        const rows = await dbAll('SELECT sessionId FROM bookings WHERE userId = ?', [req.user.id]);
+        res.json(rows.map((r: any) => r.sessionId));
+    } catch {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+router.get('/:id/series', authenticateToken, requireCommittee, async (req, res) => {
+    try {
+        const session = await dbGet<{ seriesId: string | null }>(
+            'SELECT seriesId FROM sessions WHERE id = ?',
+            [req.params.id]
+        );
+
+        if (!session) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+
+        if (!session.seriesId) {
+            return res.status(404).json({ error: 'Session is not part of a series' });
+        }
+
+        const series = await dbGet(
+            'SELECT * FROM session_series WHERE id = ?',
+            [session.seriesId]
+        );
+
+        if (!series) {
+            return res.status(404).json({ error: 'Series not found' });
+        }
+
+        const sessions = await dbAll(
+            'SELECT * FROM sessions WHERE seriesId = ? ORDER BY date ASC',
+            [session.seriesId]
+        );
+
+        res.json({
+            series,
+            sessions
+        });
+    } catch {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+router.put('/:id/series', authenticateToken, requireCommittee, async (req, res) => {
+    const {
+        title,
+        type,
+        capacity,
+        location,
+        requiredMembership,
+        visibility,
+        registrationVisibility
+    } = req.body;
+
+    try {
+        const session = await dbGet<{
+            seriesId: string | null;
+            title: string;
+            type: string;
+            capacity: number;
+            location: string | null;
+            requiredMembership: string | null;
+            visibility: 'all' | 'committee_only';
+            registrationVisibility: 'all' | 'committee_only';
+        }>(
+            `SELECT
+                seriesId,
+                title,
+                type,
+                capacity,
+                location,
+                requiredMembership,
+                visibility,
+                registrationVisibility
+             FROM sessions
+             WHERE id = ?`,
+            [req.params.id]
+        );
+
+        if (!session) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+
+        if (!session.seriesId) {
+            return res.status(400).json({ error: 'Session is not part of a series' });
+        }
+
+        const series = await dbGet(
+            'SELECT id FROM session_series WHERE id = ?',
+            [session.seriesId]
+        );
+
+        if (!series) {
+            return res.status(404).json({ error: 'Series not found' });
+        }
+
+        const defaultMembershipType = await getDefaultMembershipTypeAsync();
+        if (!defaultMembershipType) {
+            return res.status(500).json({ error: 'No membership types configured' });
+        }
+
+        const reqMemb =
+            requiredMembership ||
+            session.requiredMembership ||
+            defaultMembershipType;
+
+        if (!(await membershipTypeExists(reqMemb))) {
+            return res.status(400).json({ error: 'Invalid required membership type' });
+        }
+
+        const eventVisibility =
+            visibility === 'committee_only'
+                ? 'committee_only'
+                : visibility === 'all'
+                    ? 'all'
+                    : session.visibility;
+
+        const eventRegistrationVisibility =
+            registrationVisibility === 'committee_only'
+                ? 'committee_only'
+                : registrationVisibility === 'all'
+                    ? 'all'
+                    : session.registrationVisibility;
+
+        await inTransaction(async () => {
+            await dbRun(
+                `UPDATE sessions
+                 SET title = ?,
+                     type = ?,
+                     capacity = ?,
+                     location = ?,
+                     requiredMembership = ?,
+                     visibility = ?,
+                     registrationVisibility = ?
+                 WHERE seriesId = ?`,
+                [
+                    title ?? session.title,
+                    type ?? session.type,
+                    capacity ?? session.capacity,
+                    location ?? session.location,
+                    reqMemb,
+                    eventVisibility,
+                    eventRegistrationVisibility,
+                    session.seriesId
+                ]
+            );
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating session series:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+router.delete('/:id/series', authenticateToken, requireCommittee, async (req, res) => {
+    try {
+        const session = await dbGet<{ seriesId: string | null }>(
+            'SELECT seriesId FROM sessions WHERE id = ?',
+            [req.params.id]
+        );
+
+        if (!session) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+
+        if (!session.seriesId) {
+            return res.status(400).json({ error: 'Session is not part of a series' });
+        }
+
+        const series = await dbGet(
+            'SELECT id FROM session_series WHERE id = ?',
+            [session.seriesId]
+        );
+
+        if (!series) {
+            return res.status(404).json({ error: 'Series not found' });
+        }
+
+        const bookingCount = await dbGet<{ count: number }>(
+            `SELECT COUNT(*) AS count
+             FROM bookings b
+             JOIN sessions s ON s.id = b.sessionId
+             WHERE s.seriesId = ?`,
+            [session.seriesId]
+        );
+
+        if (bookingCount && bookingCount.count > 0) {
+            return res.status(409).json({
+                error: 'Cannot delete this series because one or more sessions have bookings.',
+                bookingCount: bookingCount.count
+            });
+        }
+
+        await inTransaction(async () => {
+            await dbRun(
+                'DELETE FROM sessions WHERE seriesId = ?',
+                [session.seriesId]
+            );
+
+            await dbRun(
+                'DELETE FROM session_series WHERE id = ?',
+                [session.seriesId]
+            );
+        });
+
+        res.json({ success: true });
     } catch {
         res.status(500).json({ error: 'Database error' });
     }
@@ -315,15 +568,6 @@ router.put('/:id', authenticateToken, requireCommittee, async (req, res) => {
             ]
         );
         res.json({ success: true });
-    } catch {
-        res.status(500).json({ error: 'Database error' });
-    }
-});
-
-router.get('/me/bookings', authenticateToken, async (req: any, res) => {
-    try {
-        const rows = await dbAll('SELECT sessionId FROM bookings WHERE userId = ?', [req.user.id]);
-        res.json(rows.map((r: any) => r.sessionId));
     } catch {
         res.status(500).json({ error: 'Database error' });
     }

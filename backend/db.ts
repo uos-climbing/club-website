@@ -213,6 +213,16 @@ function initializeDatabase() {
         db.run('ALTER TABLE users ADD COLUMN bio TEXT', (err) => {});
         db.run('ALTER TABLE users ADD COLUMN profilePhoto TEXT', (err) => {});
 
+        // Session Series Table
+        db.run(`CREATE TABLE IF NOT EXISTS session_series (
+            id TEXT PRIMARY KEY,
+            recurrenceRule TEXT NOT NULL,
+            recurrenceUntil TEXT NOT NULL,
+            createdAt INTEGER NOT NULL
+        )`);
+
+        db.run('CREATE INDEX IF NOT EXISTS idx_session_series_rule ON session_series (recurrenceRule)');
+
         // Sessions Table
         db.run(`CREATE TABLE IF NOT EXISTS sessions (
             id TEXT PRIMARY KEY,
@@ -230,6 +240,11 @@ function initializeDatabase() {
         db.run('ALTER TABLE sessions ADD COLUMN visibility TEXT DEFAULT "all"', (err) => {});
         db.run('ALTER TABLE sessions ADD COLUMN registrationVisibility TEXT DEFAULT "all"', (err) => {});
         db.run('ALTER TABLE sessions ADD COLUMN location TEXT', (err) => {});
+
+        // Migration: link sessions to a recurring series.
+        // Existing sessions remain NULL and continue to behave as normal sessions.
+        db.run('ALTER TABLE sessions ADD COLUMN seriesId TEXT REFERENCES session_series(id)', (err) => {});
+        db.run('CREATE INDEX IF NOT EXISTS idx_sessions_seriesId ON sessions (seriesId)');
 
         // Bookings Table
         // reminderSentAt: epoch ms of last reminder sent (NULL = not yet reminded)

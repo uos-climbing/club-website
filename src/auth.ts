@@ -76,13 +76,14 @@ export interface Session {
     id: string;
     type: 'Competition' | 'Social' | 'Training Session (Bouldering)' | 'Training Session (Roped)' | 'Meeting';
     title: string;
-    date: string; // ISO 8601 Date String
+    date: string;
     capacity: number;
     bookedSlots: number;
     location?: string;
     requiredMembership?: string;
     visibility?: 'all' | 'committee_only';
     registrationVisibility?: 'all' | 'committee_only';
+    seriesId?: string | null;
 }
 
 // Current Session State

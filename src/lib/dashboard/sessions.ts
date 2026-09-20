@@ -307,18 +307,35 @@ export function initSessionHandlers() {
             }
 
             try {
-                await adminApi.addSessions(
-                    dates.map((date) => ({
+                if (recurrenceRule === 'none') {
+                    // One-off sessions use the normal single-session endpoint.
+                    await adminApi.addSession({
                         title,
                         type,
-                        date,
+                        date: dateStr,
                         location,
                         capacity,
                         requiredMembership,
                         visibility,
                         registrationVisibility
-                    }))
-                );
+                    });
+                } else {
+                    // Recurring sessions use the bulk endpoint and are linked as a series.
+                    await adminApi.addSessions(
+                        dates.map((date) => ({
+                            title,
+                            type,
+                            date,
+                            location,
+                            capacity,
+                            requiredMembership,
+                            visibility,
+                            registrationVisibility
+                        })),
+                        recurrenceRule as 'weekly' | 'biweekly',
+                        recurrenceUntil
+                    );
+                }
 
                 (addSessionForm as HTMLFormElement).reset();
 
