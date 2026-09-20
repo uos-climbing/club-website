@@ -1,5 +1,5 @@
 import { adminApi } from '../../auth';
-import { showConfirmModal, showPromptModal, showToast } from '../../utils';
+import { escapeHTML, showConfirmModal, showPromptModal, showToast } from '../../utils';
 
 export async function renderMembershipTypes() {
     const listContainer = document.getElementById('membership-types-list');
@@ -20,15 +20,15 @@ export async function renderMembershipTypes() {
             <div class="flex items-center justify-between p-4 bg-slate-800/20 hover:bg-slate-800/40 transition-colors border-b border-white/5 last:border-0 ${t.deprecated ? 'opacity-70' : ''}">
                 <div>
                     <div class="flex items-center gap-2">
-                        <span class="text-sm font-bold text-white">${t.label}</span>
+                        <span class="text-sm font-bold text-white">${escapeHTML(t.label)}</span>
                         ${t.deprecated ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[8px] font-black uppercase tracking-tighter">Deprecated</span>' : ''}
                     </div>
-                    <p class="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">${t.id}</p>
+                    <p class="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">${escapeHTML(t.id)}</p>
                 </div>
                 <div class="flex gap-2">
                     <button class="deprecate-membership-type-btn p-2 transition-colors ${t.id === 'basic' ? 'text-slate-700 cursor-not-allowed opacity-50' : 'text-slate-500 hover:text-amber-400'}"
-                            data-id="${t.id}"
-                            data-label="${t.label}"
+                            data-id="${escapeHTML(t.id)}"
+                            data-label="${escapeHTML(t.label)}"
                             data-deprecated="${t.deprecated ? 'true' : 'false'}"
                             title="${t.deprecated ? 'Restore Type' : 'Mark as Deprecated'}"
                             ${t.id === 'basic' ? 'disabled' : ''}>
@@ -37,16 +37,16 @@ export async function renderMembershipTypes() {
                         </svg>
                     </button>
                     <button class="edit-membership-type-btn p-2 text-slate-500 hover:text-cyan-300 transition-colors"
-                            data-id="${t.id}"
-                            data-label="${t.label}"
+                            data-id="${escapeHTML(t.id)}"
+                            data-label="${escapeHTML(t.label)}"
                             title="Rename Type">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.586-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.414-8.586z"></path>
                         </svg>
                     </button>
                     <button class="delete-membership-type-btn p-2 transition-colors ${t.id === 'basic' ? 'text-slate-700 cursor-not-allowed opacity-50' : 'text-slate-500 hover:text-red-400'}"
-                            data-id="${t.id}"
-                            data-label="${t.label}"
+                            data-id="${escapeHTML(t.id)}"
+                            data-label="${escapeHTML(t.label)}"
                             title="${t.id === 'basic' ? 'Basic membership cannot be deleted' : 'Delete Type'}"
                             ${t.id === 'basic' ? 'disabled' : ''}>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

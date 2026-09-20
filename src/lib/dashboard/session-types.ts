@@ -1,5 +1,5 @@
 import { adminApi } from '../../auth';
-import { showToast, showConfirmModal, showPromptModal } from '../../utils';
+import { escapeHTML, showToast, showConfirmModal, showPromptModal } from '../../utils';
 
 export async function renderSessionTypes() {
     const listContainer = document.getElementById('session-types-list');
@@ -19,12 +19,12 @@ export async function renderSessionTypes() {
                 (t) => `
             <div class="flex items-center justify-between p-4 bg-slate-800/20 hover:bg-slate-800/40 transition-colors border-b border-white/5 last:border-0">
                 <div>
-                    <span class="text-sm font-bold text-white">${t.label}</span>
+                    <span class="text-sm font-bold text-white">${escapeHTML(t.label)}</span>
                 </div>
                 <div class="flex gap-2">
                     <button class="delete-type-btn p-2 text-slate-500 hover:text-red-400 transition-colors" 
-                            data-id="${t.id}" 
-                            data-label="${t.label}" 
+                            data-id="${escapeHTML(t.id)}"
+                            data-label="${escapeHTML(t.label)}"
                             title="Delete Type">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>

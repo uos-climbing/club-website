@@ -28,13 +28,8 @@ export const requireCommittee = async (req: any, res: any, next: any) => {
     const isRootAdmin = req.user.role === 'committee' && (req.user.email || '').toLowerCase() === ROOT_ADMIN_EMAIL;
     if (isRootAdmin) return next();
 
-    const tokenClaimsCommittee =
-        req.user.role === 'committee' ||
-        !!req.user.committeeRole ||
-        (Array.isArray(req.user.committeeRoles) && req.user.committeeRoles.length > 0);
-    if (!tokenClaimsCommittee) return res.status(403).json({ error: 'Requires committee privileges' });
-
-    // Committee status is mutable, so verify that a token's claim remains true.
+    // Committee status is mutable, so use the database as the source of truth.
+    // This also admits members promoted since their current JWT was issued.
     // Any database error denies access rather than silently trusting stale data.
     const user = await dbGet<{ id: string }>(
         'SELECT id FROM users WHERE id = ? AND (role = "committee" OR committeeRole IS NOT NULL)',
