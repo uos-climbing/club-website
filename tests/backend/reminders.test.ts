@@ -1,17 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../../backend/server';
 import { db } from '../../backend/db';
 import { processBookingReminders } from '../../backend/services/bookings';
-import { dbAll, dbRun } from '../../backend/utils/db';
+import { dbRun } from '../../backend/utils/db';
 
 /**
  * Reminder sweep logic. Emails are globally mocked (tests/setup.ts);
  * we assert against the nodemailer transport's sendMail mock.
  */
 describe('Booking reminder sweep', () => {
-    let rootToken = '';
-    const userToken = '';
 
     const seedSession = async (id: string, isoDate: string) => {
         await dbRun('INSERT INTO sessions (id, type, title, date, capacity, bookedSlots) VALUES (?, ?, ?, ?, ?, ?)', [
@@ -49,10 +47,6 @@ describe('Booking reminder sweep', () => {
 
     beforeAll(async () => {
         await new Promise((resolve) => setTimeout(resolve, 500));
-        const adminRes = await request(app)
-            .post('/api/auth/login')
-            .send({ email: 'committee@sheffieldclimbing.org', password: 'SuperSecret123!' });
-        rootToken = adminRes.body.token;
     });
 
     afterAll(() => {

@@ -4,6 +4,10 @@ import { authenticateToken, requireCommittee } from '../middleware/auth';
 
 const router = express.Router();
 
+function isSqliteConstraintError(error: unknown): boolean {
+    return typeof error === 'object' && error !== null && 'code' in error && error.code === 'SQLITE_CONSTRAINT';
+}
+
 function normalizeMembershipTypeId(input: string): string {
     return input
         .trim()
@@ -31,8 +35,8 @@ router.post('/', authenticateToken, requireCommittee, async (req, res) => {
     try {
         await dbRun('INSERT INTO membership_types (id, label) VALUES (?, ?)', [id, label]);
         res.json({ id, label });
-    } catch (err: any) {
-        if (err?.code === 'SQLITE_CONSTRAINT') {
+    } catch (err) {
+        if (isSqliteConstraintError(err)) {
             return res.status(400).json({ error: 'Membership type already exists' });
         }
         res.status(500).json({ error: 'Database error' });

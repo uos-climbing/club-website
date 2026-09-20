@@ -2,17 +2,10 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../../backend/server';
 import { db } from '../../backend/db';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 describe('Sessions API', () => {
     let userToken: string;
     let committeeToken: string;
-    let sessionId: string;
 
     beforeAll(async () => {
         // Wait for DB initialization

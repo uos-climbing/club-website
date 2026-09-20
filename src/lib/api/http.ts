@@ -1,4 +1,7 @@
 export class ApiError extends Error {
+    readonly pendingVerification: boolean;
+    readonly userId: string | undefined;
+
     constructor(
         message: string,
         readonly status: number,
@@ -6,7 +9,23 @@ export class ApiError extends Error {
     ) {
         super(message);
         this.name = 'ApiError';
+        this.pendingVerification = hasBooleanProperty(data, 'pendingVerification');
+        this.userId = getStringProperty(data, 'userId');
     }
+}
+
+function hasBooleanProperty(value: unknown, property: string): boolean {
+    return typeof value === 'object' && value !== null && property in value && value[property] === true;
+}
+
+function getStringProperty(value: unknown, property: string): string | undefined {
+    return typeof value === 'object' && value !== null && property in value && typeof value[property] === 'string'
+        ? value[property]
+        : undefined;
+}
+
+export function getErrorMessage(error: unknown, fallback: string): string {
+    return error instanceof Error && error.message ? error.message : fallback;
 }
 
 function getApiErrorMessage(data: unknown, fallback: string): string {

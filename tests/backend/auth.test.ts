@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../../backend/server';
 import { db } from '../../backend/db';
@@ -77,7 +77,7 @@ describe('Authentication API', () => {
     });
 
     it('should reject login after user deletion', async () => {
-        const { token, id } = await createAuthUser('Deleted');
+        const { id } = await createAuthUser('Deleted');
 
         // Delete the user using a verified admin token (we need to be root)
         const adminRes = await request(app).post('/api/auth/login').send({
@@ -147,7 +147,7 @@ describe('Authentication API', () => {
     });
 
     it('should handle DB error when fetching committee roles for current user', async () => {
-        const { id, token } = await createAuthUser('roles_err');
+        const { token } = await createAuthUser('roles_err');
 
         const { vi } = await import('vitest');
         const spyAll = vi

@@ -4,7 +4,6 @@ import { app } from '../../backend/server';
 import { db } from '../../backend/db';
 
 describe('Verification API', () => {
-    let testUser: any;
     const CALENDAR_TOKEN = 'test-token-123';
 
     beforeAll(async () => {

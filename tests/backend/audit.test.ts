@@ -23,10 +23,6 @@ describe('Admin audit trail', () => {
             });
         targetUserId = userRes.body.userId ?? userRes.body.user?.id;
 
-        const userLogin = await request(app)
-            .post('/api/auth/login')
-            .send({ email: `audit_target_${Date.now()}@example.com`, password: 'Password123!' });
-
         // Register the regular member token via a dedicated account
         const memberRes = await request(app)
             .post('/api/auth/register')

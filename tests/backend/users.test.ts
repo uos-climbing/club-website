@@ -3,7 +3,6 @@ import request from 'supertest';
 
 import { app } from '../../backend/server';
 import { db } from '../../backend/db';
-import bcrypt from 'bcrypt';
 
 describe('Users API', () => {
     let rootToken: string;
@@ -114,7 +113,6 @@ describe('Users API', () => {
         const { token, id } = await createTestUser('req_membership');
 
         // Force the user to be 'rejected' as if an admin rejected them
-        const originalRun = db.run.bind(db);
         await new Promise((resolve) => {
             db.run('UPDATE users SET membershipStatus = ? WHERE id = ?', ['rejected', id], resolve);
         });

@@ -3,8 +3,6 @@ import request from 'supertest';
 import { app } from '../../backend/server';
 import { db } from '../../backend/db';
 import fs from 'fs';
-import path from 'path';
-import sharp from 'sharp';
 
 // Mock sharp to avoid actual image processing in tests
 vi.mock('sharp', () => {
@@ -407,7 +405,6 @@ describe('Gallery API', () => {
 
     describe('DELETE /api/gallery/:id', () => {
         let imageId: string;
-        let filepath: string;
 
         beforeAll(async () => {
             const res = await request(app)
@@ -415,7 +412,6 @@ describe('Gallery API', () => {
                 .set('Authorization', `Bearer ${committeeToken}`)
                 .attach('photos', mockImageBuffer, 'delete.jpg');
             imageId = res.body.uploaded[0].id;
-            filepath = res.body.uploaded[0].filepath;
         });
 
         it('should return 404 for unknown image', async () => {
@@ -438,7 +434,6 @@ describe('Gallery API', () => {
         });
 
         it('should handle fs deletion error gracefully and continue deleting from db', async () => {
-            const testPath = path.join(process.cwd(), filepath);
             // mock existsSync to return true
             const spyExists = vi.spyOn(fs, 'existsSync').mockReturnValue(true);
             const spyUnlink = vi.spyOn(fs, 'unlinkSync').mockImplementationOnce(() => {
@@ -461,7 +456,6 @@ describe('Gallery API', () => {
                 .set('Authorization', `Bearer ${committeeToken}`)
                 .attach('photos', mockImageBuffer, 'delete2.jpg');
             const newId = upRes.body.uploaded[0].id;
-            const newPath = upRes.body.uploaded[0].filepath;
 
             // Mock FS to prevent actual deletion errors if file doesn't exist
             const spyExists = vi.spyOn(fs, 'existsSync').mockReturnValue(true);

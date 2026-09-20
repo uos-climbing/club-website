@@ -7,7 +7,7 @@ import { adminApi } from './lib/api/admin';
 import { committeeApi } from './lib/api/committee';
 import { gearApi } from './lib/api/gear';
 import { votingApi } from './lib/api/voting';
-import { apiFetch } from './lib/api/http';
+import { ApiError, apiFetch } from './lib/api/http';
 
 export interface User {
     id: string;
@@ -99,20 +99,12 @@ export const authState = {
     },
 
     async login(email: string, password?: string) {
-        try {
-            const data = await apiFetch('/api/auth/login', {
-                method: 'POST',
-                body: JSON.stringify({ email, password })
-            });
-            this.user = data.user;
-            return this.user;
-        } catch (err: any) {
-            if (err.data && err.data.pendingVerification !== undefined) {
-                err.pendingVerification = err.data.pendingVerification;
-                err.userId = err.data.userId;
-            }
-            throw err;
-        }
+        const data = await apiFetch<{ user: User }>('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password })
+        });
+        this.user = data.user;
+        return this.user;
     },
 
     async verifyEmail(userId: string, code: string) {
@@ -140,28 +132,20 @@ export const authState = {
         registrationNumber: string,
         membershipTypes: string[]
     ) {
-        try {
-            const data = await apiFetch('/api/auth/register', {
-                method: 'POST',
-                body: JSON.stringify({
-                    firstName,
-                    lastName,
-                    email,
-                    password: passwordHash,
-                    passwordConfirm,
-                    registrationNumber,
-                    membershipTypes
-                })
-            });
-            this.user = data.user;
-            return data;
-        } catch (err: any) {
-            if (err.data && err.data.pendingVerification !== undefined) {
-                err.pendingVerification = err.data.pendingVerification;
-                err.userId = err.data.userId;
-            }
-            throw err;
-        }
+        const data = await apiFetch<{ user?: User; pendingVerification?: boolean; userId?: string }>('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({
+                firstName,
+                lastName,
+                email,
+                password: passwordHash,
+                passwordConfirm,
+                registrationNumber,
+                membershipTypes
+            })
+        });
+        if (data.user) this.user = data.user;
+        return data;
     },
 
     async getProfile() {
@@ -267,9 +251,8 @@ export const authState = {
                 method: 'POST',
                 body: JSON.stringify({ email: this.user.email, password })
             });
-        } catch (error: any) {
-            const status = error?.status ?? error?.response?.status;
-            if (status === 401 || status === 403) {
+        } catch (error) {
+            if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
                 throw new Error('Incorrect password.', { cause: error });
             }
             // For other errors (network/server/etc.), rethrow so they can be handled upstream

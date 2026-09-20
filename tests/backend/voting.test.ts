@@ -4,15 +4,12 @@ import { app } from '../../backend/server';
 import { db } from '../../backend/db';
 
 describe('Voting API', () => {
-    let userToken: string;
-    let userId: string;
-
     beforeAll(async () => {
         // Wait for DB initialization
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         // Create a regular user
-        const userRes = await request(app).post('/api/auth/register').send({
+        await request(app).post('/api/auth/register').send({
             firstName: 'Voting',
             lastName: 'User',
             email: 'voter@example.com',
@@ -20,11 +17,6 @@ describe('Voting API', () => {
             passwordConfirm: 'Password123!',
             registrationNumber: 'VOTER1'
         });
-        const cookies1 = userRes.headers['set-cookie'];
-        const cookieArray1 = Array.isArray(cookies1) ? cookies1 : cookies1 ? [cookies1] : [];
-        const tokenCookie1 = cookieArray1.find((c: string) => c.startsWith('uscc_token='));
-        userToken = tokenCookie1 ? tokenCookie1.split(';')[0].split('=')[1] : '';
-        userId = userRes.body.user.id;
     });
 
     afterAll(async () => {

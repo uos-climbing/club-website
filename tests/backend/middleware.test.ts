@@ -4,37 +4,10 @@ import { app } from '../../backend/server';
 import { db } from '../../backend/db';
 
 describe('Middleware Auth API', () => {
-    let memToken: string;
-    let comToken: string;
-    let kitToken: string;
 
     beforeAll(async () => {
         // Wait for DB initialization
         await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Create a regular user
-        const u1 = await request(app).post('/api/auth/register').send({
-            firstName: 'Member',
-            lastName: 'User',
-            email: 'mem@example.com',
-            password: 'Password123!',
-            passwordConfirm: 'Password123!',
-            registrationNumber: 'MEM1'
-        });
-        const tc1 = u1.headers['set-cookie']?.find((c: string) => c.startsWith('uscc_token='));
-        memToken = tc1 ? tc1.split(';')[0].split('=')[1] : '';
-
-        // Create committee
-        const u2 = await request(app).post('/api/auth/register').send({
-            firstName: 'Com',
-            lastName: 'User',
-            email: 'com@example.com',
-            password: 'Password123!',
-            passwordConfirm: 'Password123!',
-            registrationNumber: 'COM2'
-        });
-        const tc2 = u2.headers['set-cookie']?.find((c: string) => c.startsWith('uscc_token='));
-        comToken = tc2 ? tc2.split(';')[0].split('=')[1] : '';
 
         // Create kit sec (needs promotion by admin)
         const u3 = await request(app).post('/api/auth/register').send({
@@ -45,8 +18,6 @@ describe('Middleware Auth API', () => {
             passwordConfirm: 'Password123!',
             registrationNumber: 'KIT3'
         });
-        const tc3 = u3.headers['set-cookie']?.find((c: string) => c.startsWith('uscc_token='));
-        kitToken = tc3 ? tc3.split(';')[0].split('=')[1] : '';
         const kitId = u3.body.user.id;
 
         // Login Admin
@@ -66,15 +37,6 @@ describe('Middleware Auth API', () => {
             .set('Authorization', `Bearer ${rootToken}`)
             .send({ committeeRole: 'Kit & Safety Sec' });
 
-        // Re-login kit user to get fresh JWT with updated role
-        const kitLoginRes = await request(app).post('/api/auth/login').send({
-            email: 'kit@example.com',
-            password: 'Password123!'
-        });
-        const kitCookies = kitLoginRes.headers['set-cookie'];
-        const kitCookieArray = Array.isArray(kitCookies) ? kitCookies : kitCookies ? [kitCookies] : [];
-        const kitCookie = kitCookieArray.find((c: string) => c.startsWith('uscc_token='));
-        kitToken = kitCookie ? kitCookie.split(';')[0].split('=')[1] : '';
     });
 
     afterAll(async () => {

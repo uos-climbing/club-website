@@ -1,19 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../../backend/server';
 import { db } from '../../backend/db';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 describe('Gear API', () => {
     let userToken: string;
     let adminToken: string;
-    let gearId: string;
-    let requestId: string;
 
     beforeAll(async () => {
         // Wait for DB initialization
@@ -299,7 +291,7 @@ describe('Gear API', () => {
                     return originalRun(query, params as any, cb as any);
                 }
             });
-            const res = await request(app)
+            await request(app)
                 .post('/api/gear/requests/1/reject')
                 .set('Authorization', `Bearer ${adminToken}`);
             // Wait, if I mockImplementationOnce, it might catch a background run?

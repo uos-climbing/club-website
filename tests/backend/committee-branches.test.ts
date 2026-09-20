@@ -1,7 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
-import fs from 'fs';
-import path from 'path';
 import { app } from '../../backend/server';
 import { db } from '../../backend/db';
 

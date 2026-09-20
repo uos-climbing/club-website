@@ -2,6 +2,7 @@ import './style.css';
 import { adminApi, authState } from './auth';
 import { createDomainEmailPopupController } from './lib/auth/domainEmailPopup';
 import { renderRegistrationMembershipTypes } from './lib/auth/membershipOptions';
+import { ApiError, getErrorMessage } from './lib/api/http';
 
 export async function initLoginApp() {
     // If the user happens to hit this page while already logged in, redirect them
@@ -172,11 +173,11 @@ export async function initLoginApp() {
         try {
             await authState.login(email, password);
             window.location.href = '/dashboard';
-        } catch (error: any) {
-            if (error.pendingVerification && error.userId) {
+        } catch (error) {
+            if (error instanceof ApiError && error.pendingVerification && error.userId) {
                 showVerifyPanel(error.userId);
             } else {
-                loginError.textContent = error.message || 'Login failed.';
+                loginError.textContent = getErrorMessage(error, 'Login failed.');
                 loginError.classList.remove('hidden');
             }
             loginBtn.disabled = false;
@@ -254,8 +255,8 @@ export async function initLoginApp() {
 
             // No verification needed (test env / root admin) — already logged in
             window.location.href = '/dashboard';
-        } catch (error: any) {
-            const msg = error.message || 'Registration failed.';
+        } catch (error) {
+            const msg = getErrorMessage(error, 'Registration failed.');
             registerError.textContent = msg;
             registerError.classList.remove('hidden');
             if (msg.toLowerCase().includes('@sheffield.ac.uk')) {
@@ -284,8 +285,8 @@ export async function initLoginApp() {
         try {
             await authState.verifyEmail(pendingUserId, code);
             window.location.href = '/dashboard';
-        } catch (error: any) {
-            verifyError.textContent = error.message || 'Verification failed. Please try again.';
+        } catch (error) {
+            verifyError.textContent = getErrorMessage(error, 'Verification failed. Please try again.');
             verifyError.classList.remove('hidden');
             verifyBtn.disabled = false;
             verifyBtn.innerHTML = `<span>Verify Email</span><svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
@@ -339,8 +340,8 @@ export async function initLoginApp() {
             forgotSuccess.textContent = 'If that email is registered, a reset link has been sent. Check your inbox.';
             forgotSuccess.classList.remove('hidden');
             forgotEmailInput.value = '';
-        } catch (error: any) {
-            forgotError.textContent = error.message || 'Failed to send reset email.';
+        } catch (error) {
+            forgotError.textContent = getErrorMessage(error, 'Failed to send reset email.');
             forgotError.classList.remove('hidden');
         } finally {
             forgotBtn.disabled = false;
@@ -384,8 +385,8 @@ export async function initLoginApp() {
             setTimeout(() => {
                 window.location.href = '/login';
             }, 2000);
-        } catch (error: any) {
-            resetError.textContent = error.message || 'Failed to reset password. The link may have expired.';
+        } catch (error) {
+            resetError.textContent = getErrorMessage(error, 'Failed to reset password. The link may have expired.');
             resetError.classList.remove('hidden');
             resetBtn.disabled = false;
             resetBtn.innerHTML = '<span>Update Password</span>';

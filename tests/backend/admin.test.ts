@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../../backend/server';
 import { db } from '../../backend/db';
@@ -6,8 +6,6 @@ import { db } from '../../backend/db';
 describe('Admin API', () => {
     let rootToken: string;
     let userToken: string;
-    let committeeToken: string;
-    let targetUserId: string;
 
     beforeAll(async () => {
         // Wait for DB initialization
@@ -24,7 +22,6 @@ describe('Admin API', () => {
         });
         const tokenCookie1 = (userRes.headers['set-cookie'] as any)?.find((c: string) => c.startsWith('uscc_token='));
         userToken = tokenCookie1 ? tokenCookie1.split(';')[0].split('=')[1] : '';
-        targetUserId = userRes.body.user?.id || '';
 
         // Login as the root admin
         const adminRes = await request(app).post('/api/auth/login').send({
@@ -36,19 +33,6 @@ describe('Admin API', () => {
         const adminCookie = cookieArray.find((c: string) => c.startsWith('uscc_token='));
         rootToken = adminCookie ? adminCookie.split(';')[0].split('=')[1] : adminRes.body.token || '';
 
-        // Login as a committee member
-        const committeeRes = await request(app).post('/api/auth/login').send({
-            email: 'committee@sheffieldclimbing.org',
-            password: 'SuperSecret123!'
-        });
-        const committeeCookies = committeeRes.headers['set-cookie'];
-        const committeeCookieArray = Array.isArray(committeeCookies)
-            ? committeeCookies
-            : committeeCookies
-              ? [committeeCookies]
-              : [];
-        const tokenCookie2 = committeeCookieArray.find((c: string) => c.startsWith('uscc_token='));
-        committeeToken = tokenCookie2 ? tokenCookie2.split(';')[0].split('=')[1] : '';
     });
 
     afterAll(async () => {
