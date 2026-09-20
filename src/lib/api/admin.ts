@@ -90,6 +90,13 @@ export const adminApi = {
         });
     },
 
+    async addSessions(sessions: Omit<Session, 'id' | 'bookedSlots'>[]): Promise<Session[]> {
+        return apiFetch('/api/sessions/bulk', {
+            method: 'POST',
+            body: JSON.stringify({ sessions })
+        });
+    },
+
     async updateSession(id: string, updates: Partial<Session>): Promise<void> {
         return apiFetch(`/api/sessions/${id}`, {
             method: 'PUT',

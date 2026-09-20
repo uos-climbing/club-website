@@ -197,6 +197,35 @@ export function initSessionHandlers() {
         });
     }
 
+    // Toggle visibility of the "repeat until" input based on the selected recurrence rule
+    const recurrenceRuleSelect = document.getElementById(
+        'session-recurrence-rule'
+    ) as HTMLSelectElement | null;
+
+    const recurrenceUntilContainer = document.getElementById(
+        'session-recurrence-until-container'
+    );
+
+    const recurrenceUntilInput = document.getElementById(
+        'session-recurrence-until'
+    ) as HTMLInputElement | null;
+
+    const updateRecurrenceVisibility = () => {
+        const repeating = recurrenceRuleSelect?.value !== 'none';
+
+        recurrenceUntilContainer?.classList.toggle('hidden', !repeating);
+
+        if (recurrenceUntilInput) {
+            recurrenceUntilInput.required = repeating;
+        }
+    };
+
+    if (recurrenceRuleSelect) {
+        recurrenceRuleSelect.addEventListener('change', updateRecurrenceVisibility);
+        updateRecurrenceVisibility();
+    }
+    
+
     if (addSessionForm) {
         addSessionForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -212,20 +241,104 @@ export function initSessionHandlers() {
             const registrationVisibility = registrationRule === 'committee_only' ? 'committee_only' : 'all';
             const requiredMembership = registrationRule === 'committee_only' ? undefined : registrationRule;
 
-            if (title && type && dateStr && !isNaN(capacity)) {
-                await adminApi.addSession({
-                    title,
-                    type,
-                    date: dateStr,
-                    location,
-                    capacity,
-                    requiredMembership,
-                    visibility,
-                    registrationVisibility
-                });
+            const recurrenceRule =
+                (document.getElementById('session-recurrence-rule') as HTMLSelectElement)?.value || 'none';
+            const recurrenceUntil =
+                (document.getElementById('session-recurrence-until') as HTMLInputElement)?.value || '';
+
+            if (!title || !type || !dateStr || isNaN(capacity)) return;
+
+            const formatDateTimeLocal = (date: Date) => {
+                const pad = (value: number) => String(value).padStart(2, '0');
+                return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+                    date.getHours()
+                )}:${pad(date.getMinutes())}`;
+            };
+
+            const generateRecurringDates = (startDate: string, recurrence: string, untilDate: string): string[] => {
+                const start = new Date(startDate);
+                const until = new Date(`${untilDate}T23:59:59`);
+
+                if (isNaN(start.getTime()) || isNaN(until.getTime()) || until < start) {
+                    return [];
+                }
+
+                const intervalDays = recurrence === 'biweekly' ? 14 : 7;
+                const dates: string[] = [];
+                let current = new Date(start);
+
+                while (current <= until && dates.length < 50) {
+                    dates.push(formatDateTimeLocal(current));
+                    current.setDate(current.getDate() + intervalDays);
+                }
+
+                return dates;
+            };
+
+            let dates = [dateStr];
+
+            if (recurrenceRule !== 'none') {
+                if (!recurrenceUntil) {
+                    alert('Please choose a date to repeat until.');
+                    return;
+                }
+
+                const start = new Date(dateStr);
+                const until = new Date(`${recurrenceUntil}T23:59:59`);
+                const oneYearAfterStart = new Date(start);
+                oneYearAfterStart.setFullYear(oneYearAfterStart.getFullYear() + 1);
+
+                if (isNaN(start.getTime()) || isNaN(until.getTime()) || until < start) {
+                    alert('The repeat-until date must be on or after the first session.');
+                    return;
+                }
+
+                if (until > oneYearAfterStart) {
+                    alert('Recurring sessions can be created for a maximum of one year.');
+                    return;
+                }
+
+                dates = generateRecurringDates(dateStr, recurrenceRule, recurrenceUntil);
+
+                if (!dates.length) {
+                    alert('No valid session dates were generated.');
+                    return;
+                }
+            }
+
+            try {
+                await adminApi.addSessions(
+                    dates.map((date) => ({
+                        title,
+                        type,
+                        date,
+                        location,
+                        capacity,
+                        requiredMembership,
+                        visibility,
+                        registrationVisibility
+                    }))
+                );
+
                 (addSessionForm as HTMLFormElement).reset();
+
+                const recurrenceUntilContainer = document.getElementById('session-recurrence-until-container');
+                const recurrenceUntilInput = document.getElementById(
+                    'session-recurrence-until'
+                ) as HTMLInputElement | null;
+
+                recurrenceUntilContainer?.classList.add('hidden');
+                if (recurrenceUntilInput) recurrenceUntilInput.required = false;
+
                 addSessionFormContainer?.classList.add('hidden');
                 await renderSessions(getIsCommittee());
+            } catch (error) {
+                console.error('Error creating session(s):', error);
+                alert(
+                    dates.length === 1
+                        ? 'Unable to create the session. Nothing was created.'
+                        : 'Unable to create the recurring sessions. Nothing was created.'
+                );
             }
         });
     }

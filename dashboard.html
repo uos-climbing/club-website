@@ -648,6 +648,44 @@
                                                 />
                                             </div>
                                         </div>
+                                        
+                                        <!-- Recurrence Options -->
+                                        <div class="border-t border-white/10 pt-4 space-y-4">
+                                            <div>
+                                                <label
+                                                    for="session-recurrence-rule"
+                                                    class="block text-xs font-bold text-slate-400 mb-1 uppercase"
+                                                >
+                                                    Repeat
+                                                </label>
+                                                <select
+                                                    id="session-recurrence-rule"
+                                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-gold"
+                                                >
+                                                    <option value="none">Does not repeat</option>
+                                                    <option value="weekly">Weekly</option>
+                                                    <option value="biweekly">Every 2 weeks</option>
+                                                </select>
+                                            </div>
+
+                                            <div id="session-recurrence-until-container" class="hidden">
+                                                <label
+                                                    for="session-recurrence-until"
+                                                    class="block text-xs font-bold text-slate-400 mb-1 uppercase"
+                                                >
+                                                    Repeat Until
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    id="session-recurrence-until"
+                                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-brand-gold"
+                                                />
+                                                <p class="text-[10px] text-slate-500 mt-1">
+                                                    Maximum 100 occurrences or one year from the first session.
+                                                </p>
+                                            </div>
+                                        </div>
+
                                         <div>
                                             <label class="block text-xs font-bold text-slate-400 mb-1 uppercase"
                                                 >Who Can See This Event</label

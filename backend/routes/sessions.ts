@@ -177,6 +177,103 @@ router.post('/', authenticateToken, requireCommittee, async (req, res) => {
     }
 });
 
+/**
+ * Create multiple sessions (Used by recurrance).
+ * Rollback on any failure, so either all sessions are created or none.
+ */
+router.post('/bulk', authenticateToken, requireCommittee, async (req, res) => {
+    const { sessions } = req.body;
+
+    if (!Array.isArray(sessions) || sessions.length === 0 || sessions.length > 50) {
+        return res.status(400).json({ error: 'Provide between 1 and 50 sessions.' });
+    }
+
+    for (const session of sessions) {
+        if (
+            !session ||
+            typeof session.title !== 'string' ||
+            !session.title.trim() ||
+            typeof session.type !== 'string' ||
+            !session.type.trim() ||
+            typeof session.date !== 'string' ||
+            !session.date.trim() ||
+            typeof session.capacity !== 'number' ||
+            !Number.isInteger(session.capacity) ||
+            session.capacity < 1
+        ) {
+            return res.status(400).json({ error: 'Invalid session data.' });
+        }
+    }
+
+    try {
+        const defaultMembershipType = await getDefaultMembershipTypeAsync();
+        if (!defaultMembershipType) {
+            return res.status(500).json({ error: 'No membership types configured' });
+        }
+
+        const preparedSessions: Array<{
+            id: string;
+            type: string;
+            title: string;
+            date: string;
+            capacity: number;
+            bookedSlots: number;
+            location: string | null;
+            requiredMembership: string;
+            visibility: 'committee_only' | 'all';
+            registrationVisibility: 'committee_only' | 'all';
+        }> = [];
+
+        for (const session of sessions) {
+            const reqMemb = session.requiredMembership || defaultMembershipType;
+
+            if (!(await membershipTypeExists(reqMemb))) {
+                return res.status(400).json({ error: 'Invalid required membership type' });
+            }
+
+            preparedSessions.push({
+                id: 'sess_' + crypto.randomUUID(),
+                type: session.type,
+                title: session.title,
+                date: session.date,
+                capacity: session.capacity,
+                bookedSlots: 0,
+                location: session.location || null,
+                requiredMembership: reqMemb,
+                visibility: session.visibility === 'committee_only' ? 'committee_only' : 'all',
+                registrationVisibility:
+                    session.registrationVisibility === 'committee_only' ? 'committee_only' : 'all'
+            });
+        }
+
+        const createdSessions = await inTransaction(async () => {
+            for (const session of preparedSessions) {
+                await dbRun(
+                    'INSERT INTO sessions (id, type, title, date, capacity, bookedSlots, location, requiredMembership, visibility, registrationVisibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [
+                        session.id,
+                        session.type,
+                        session.title,
+                        session.date,
+                        session.capacity,
+                        session.bookedSlots,
+                        session.location,
+                        session.requiredMembership,
+                        session.visibility,
+                        session.registrationVisibility
+                    ]
+                );
+            }
+
+            return preparedSessions;
+        });
+
+        res.json(createdSessions);
+    } catch {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 router.put('/:id', authenticateToken, requireCommittee, async (req, res) => {
     const {
         title,
